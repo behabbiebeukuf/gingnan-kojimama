@@ -63,9 +63,7 @@
       font-size: 11px;
       opacity: 0.9;
     }
-    #statusBar {
-      display: none;
-    }
+    #statusBar { display:none; }
     #statusPanel {
       padding: 8px 10px;
       border-radius: 8px;
@@ -121,9 +119,9 @@
       left: 0;
       right: 0;
       bottom: 0;
-      pointer-events: none; /* 子要素で上書き */
+      pointer-events: none;
       padding: 8px 10px 12px;
-      display: none; /* PCでは非表示 */
+      display: none;
       z-index: 20;
     }
     #touchControlsInner {
@@ -179,12 +177,8 @@
       justify-content: center;
       box-shadow: 0 0 8px rgba(15,23,42,0.7);
     }
-    .touchBtn span {
-      pointer-events: none;
-    }
-    .touchBtn:active {
-      background: rgba(37,99,235,0.9);
-    }
+    .touchBtn span { pointer-events:none; }
+    .touchBtn:active { background: rgba(37,99,235,0.9); }
     .touchBtn-bomb {
       border-color: rgba(248,113,113,0.9);
       color: #fecaca;
@@ -194,11 +188,8 @@
       color: #bbf7d0;
     }
 
-    /* レイアウトをスマホ用に縦並びに */
     @media (max-width: 900px) {
-      .root {
-        padding: 8px;
-      }
+      .root { padding: 8px; }
       #gamePanel {
         flex-direction: column;
         padding: 12px;
@@ -210,12 +201,8 @@
         max-width: 480px;
         margin: 0 auto;
       }
-      #ui {
-        max-width: none;
-      }
-      #touchControls {
-        display: block;
-      }
+      #ui { max-width:none; }
+      #touchControls { display:block; }
     }
   </style>
 </head>
@@ -236,16 +223,15 @@
         <div id="help">
           PC：Z＝ショット / X＝ボム / Shift＝低速 / ←→↑↓ or WASD＝移動<br>
           スマホ：画面下の丸いパッドで移動、右のボタンでショット・ボム・低速<br>
-          さらに「画面タップ」で会話送り＆スタートもできます
+          会話は「画面タップ」で次へ進みます
         </div>
 
-        <!-- INF / チート無敵トグル -->
         <label style="display:block; margin:8px 0; font-size:13px; color:#fbbf24; user-select:none;">
           <input type="checkbox" id="cheatInvincible"> ■ 敵の攻撃無効化（INF / チート）
         </label>
 
         <button id="startButton">ゲームスタート / リトライ</button>
-        <div style="margin-top:8px; margin-bottom:4px;">ログ</div>
+        <div style="margin-top:8px; margin-bottom:4px;">ログ（システムメモ用）</div>
         <div id="log"></div>
       </div>
     </div>
@@ -281,14 +267,12 @@
     const btnBomb = document.getElementById("btnBomb");
     const btnSlow = document.getElementById("btnSlow");
 
-    // モバイル入力状態
     let touchMoveActive = false;
     let touchMoveDx = 0;
     let touchMoveDy = 0;
     let touchShot = false;
     let touchSlow = false;
 
-    // チート用無敵フラグ
     let cheatInvincible = false;
 
     // ステージ背景
@@ -297,15 +281,12 @@
     let stageBgLoaded = false;
     stageBg.addEventListener("load", () => { stageBgLoaded = true; });
 
-    // BGM
     const bgm = new Audio("bgm.wav");
     bgm.loop = true;
 
-    // 敵ヒット音
     const enemyHitSe = new Audio("敵が攻撃食らってる音.wav");
     enemyHitSe.volume = 0.9;
 
-    // 敵弾スプライトシート
     const enemySheet = new Image();
     enemySheet.src = "enemy/enemy_bullet_sheet.png";
     const ENEMY_FRAME_W = 220;
@@ -314,7 +295,6 @@
     const ENEMY_FRAME_DURATION = 0.06;
     let enemyAnimTime = 0;
 
-    // ボススプライトシート
     const bossSheet = new Image();
     bossSheet.src = "boss/boss_sheet.png";
     const BOSS_FRAME_W = 640;
@@ -371,10 +351,13 @@
     };
 
     let keys = {};
+
+    // 会話関連（吹き出し用）
     let dialogueActive = false;
     let dialogueLines = [];
     let dialogueIndex = 0;
     let dialogueOnComplete = null;
+    let currentDialogueText = "";
 
     function clearLog() {
       logBox.innerHTML = "";
@@ -391,15 +374,18 @@
       dialogueIndex = 0;
       dialogueOnComplete = onComplete || null;
       dialogueActive = true;
-      clearLog();
-      showNextDialogue();
+      currentDialogueText = "";
+      clearLog();          // ログも一応クリア
+      showNextDialogue();  // 1行目表示
     }
+
     function showNextDialogue() {
       if (dialogueIndex < dialogueLines.length) {
-        logMessage(dialogueLines[dialogueIndex]);
+        currentDialogueText = dialogueLines[dialogueIndex];
         dialogueIndex++;
       } else {
         dialogueActive = false;
+        currentDialogueText = "";
         if (dialogueOnComplete) {
           const cb = dialogueOnComplete;
           dialogueOnComplete = null;
@@ -961,6 +947,66 @@
       }
     }
 
+    // テキストをいい感じに折り返すヘルパー（日本語対応・ざっくり）
+    function wrapTextLines(ctx, text, maxWidth) {
+      const lines = [];
+      let i = 0;
+      while (i < text.length) {
+        let len = 1;
+        while (i + len <= text.length) {
+          const test = text.slice(i, i + len);
+          const w = ctx.measureText(test).width;
+          if (w > maxWidth && len > 1) {
+            len--;
+            break;
+          }
+          if (w > maxWidth && len === 1) break;
+          len++;
+        }
+        lines.push(text.slice(i, i + len));
+        i += len;
+      }
+      return lines;
+    }
+
+    // 会話吹き出しの描画
+    function drawDialogueOverlay() {
+      if (!dialogueActive || !currentDialogueText) return;
+
+      const margin = 18;
+      const padding = 12;
+      const boxWidth = canvas.width - margin * 2;
+      const boxHeight = 110;
+      const boxX = margin;
+      const boxY = canvas.height - boxHeight - margin;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(15,23,42,0.88)";
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+      ctx.strokeStyle = "rgba(148,163,184,0.9)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth - 1, boxHeight - 1);
+
+      ctx.fillStyle = "#e5e7eb";
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+
+      const maxTextWidth = boxWidth - padding * 2;
+      const lines = wrapTextLines(ctx, currentDialogueText, maxTextWidth);
+      let y = boxY + padding + 4;
+      for (const line of lines) {
+        ctx.fillText(line, boxX + padding, y);
+        y += 18;
+      }
+
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.fillStyle = "#9ca3af";
+      ctx.fillText("（タップ / Space で次へ）", boxX + padding, boxY + boxHeight - padding - 16);
+
+      ctx.restore();
+    }
+
     function drawInfoOverlay() {
       if (phase === PHASE_TITLE) {
         ctx.save();
@@ -971,7 +1017,7 @@
         ctx.font = "18px system-ui, sans-serif";
         ctx.fillText("Spaceキー / ボタン / 画面タップでスタート", canvas.width / 2, 320);
         ctx.font = "13px system-ui, sans-serif";
-        ctx.fillText("スマホは下のパッド＋ボタン＋ログタップで操作", canvas.width / 2, 348);
+        ctx.fillText("スマホは下のパッド＋ボタン＋タップで操作", canvas.width / 2, 348);
         ctx.restore();
       }
     }
@@ -983,6 +1029,7 @@
       drawParticles();
       drawPlayer();
       drawInfoOverlay();
+      drawDialogueOverlay(); // ← 最後に会話を上から描画
     }
 
     let lastTime = 0;
@@ -1032,33 +1079,23 @@
       startGame();
     });
 
-    // ★スマホ向け：タップで会話送り＆スタート
+    // 画面タップで会話送り＆スタート
     function handleTapForGame(e) {
       if (e) e.preventDefault();
 
       if (dialogueActive) {
-        // 会話中ならタップ＝次のセリフ
         showNextDialogue();
       } else if (
         phase === PHASE_TITLE ||
         phase === PHASE_CLEAR ||
         phase === PHASE_GAMEOVER
       ) {
-        // タイトル / クリア / ゲームオーバーはタップでスタート・リトライ
         startGame();
       }
     }
 
-    // キャンバス or ログをタップしても動くようにする
     canvas.addEventListener("click", handleTapForGame);
-    logBox.addEventListener("click", handleTapForGame);
-
-    canvas.addEventListener("touchend", function (e) {
-      e.preventDefault();
-      handleTapForGame(e);
-    }, { passive: false });
-
-    logBox.addEventListener("touchend", function (e) {
+    canvas.addEventListener("touchend", (e) => {
       e.preventDefault();
       handleTapForGame(e);
     }, { passive: false });
