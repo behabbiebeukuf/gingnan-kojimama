@@ -216,7 +216,6 @@
       #touchControls {
         display: block;
       }
-      /* ヘルプにモバイル向け説明を少し強調してもOK */
     }
   </style>
 </head>
@@ -236,7 +235,8 @@
         <div>操作説明</div>
         <div id="help">
           PC：Z＝ショット / X＝ボム / Shift＝低速 / ←→↑↓ or WASD＝移動<br>
-          スマホ：画面下の丸いパッドで移動、右のボタンでショット・ボム・低速
+          スマホ：画面下の丸いパッドで移動、右のボタンでショット・ボム・低速<br>
+          さらに「画面タップ」で会話送り＆スタートもできます
         </div>
 
         <!-- INF / チート無敵トグル -->
@@ -556,7 +556,7 @@
       phase = PHASE_GAMEOVER;
       clearLog();
       logMessage("GAME OVER：この店も、発酵の歴史に刻まれてしまった…。");
-      logMessage("Spaceキーかボタンでリトライできます。");
+      logMessage("Spaceキーかボタン、または画面タップでリトライできます。");
     }
 
     function gameClear() {
@@ -564,7 +564,7 @@
       clearLog();
       logMessage("CLEAR：ぎんなんの亡霊は、今日も最後まで片付けをして去っていった。");
       logMessage("店はギリギリ生き残った。たぶん。");
-      logMessage("Spaceキーかボタンで再挑戦できます。");
+      logMessage("Spaceキーかボタン、または画面タップで再挑戦できます。");
     }
 
     function useBomb() {
@@ -969,9 +969,9 @@
         ctx.fillStyle = "#e5e7eb";
         ctx.textAlign = "center";
         ctx.font = "18px system-ui, sans-serif";
-        ctx.fillText("Spaceキー / ボタンでスタート", canvas.width / 2, 320);
+        ctx.fillText("Spaceキー / ボタン / 画面タップでスタート", canvas.width / 2, 320);
         ctx.font = "13px system-ui, sans-serif";
-        ctx.fillText("スマホは下のパッドとボタンで操作", canvas.width / 2, 348);
+        ctx.fillText("スマホは下のパッド＋ボタン＋ログタップで操作", canvas.width / 2, 348);
         ctx.restore();
       }
     }
@@ -1031,6 +1031,37 @@
       if (dialogueActive) return;
       startGame();
     });
+
+    // ★スマホ向け：タップで会話送り＆スタート
+    function handleTapForGame(e) {
+      if (e) e.preventDefault();
+
+      if (dialogueActive) {
+        // 会話中ならタップ＝次のセリフ
+        showNextDialogue();
+      } else if (
+        phase === PHASE_TITLE ||
+        phase === PHASE_CLEAR ||
+        phase === PHASE_GAMEOVER
+      ) {
+        // タイトル / クリア / ゲームオーバーはタップでスタート・リトライ
+        startGame();
+      }
+    }
+
+    // キャンバス or ログをタップしても動くようにする
+    canvas.addEventListener("click", handleTapForGame);
+    logBox.addEventListener("click", handleTapForGame);
+
+    canvas.addEventListener("touchend", function (e) {
+      e.preventDefault();
+      handleTapForGame(e);
+    }, { passive: false });
+
+    logBox.addEventListener("touchend", function (e) {
+      e.preventDefault();
+      handleTapForGame(e);
+    }, { passive: false });
 
     // INF / チート
     if (cheatCheckbox) {
@@ -1148,7 +1179,7 @@
 
     clearLog();
     logMessage("タイトル：ぎんなん幻想弾幕譚 - Kojima Bullet Hell");
-    logMessage("PCはキーボード、スマホは画面下のパッドとボタンで操作。");
+    logMessage("PCはキーボード、スマホは下のパッド＋ボタン＋画面タップで操作。");
   </script>
 </body>
 </html>
