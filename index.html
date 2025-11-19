@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ぎんなんの小島と会話するツール</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-screen">
+    <video id="loginVideo" class="login-video" autoplay muted loop playsinline>
+      <source src="login.mp4" type="video/mp4">
+    </video>
+    <div class="login-overlay">
+      <h1>ぎんなんこじまログイン</h1>
+      <p class="login-subtitle">パスワードを入力すると、こじまチャットに入れます。</p>
+      <input id="loginPassword" type="password" placeholder="パスワード">
+      <button id="loginButton">入る</button>
+      <button id="audioToggle" class="audio-btn">動画の音をON</button>
+    </div>
+  </div>
+
+  <div class="app">
+    <header>
+      <h1>ぎんなんの小島と会話するツール</h1>
+      <nav class="nav-links">
+        <a href="library.html" class="nav-link">図書館コーナー</a>
+        <a href="game/game.html" class="nav-link">ぎんなんアルバイト破滅借金ゲーム</a>
+      </nav>
+    </header>
+
+
+    <section class="panel persona">
+      <h2 id="loreSummary">小島の人物像（展開に使われます）</h2>
+      <div class="grid">
+        <label>会話相手
+          <select id="character">
+            <option value="kojima">小島</option>
+            <option value="shimizu">清水</option>
+            <option value="terayama">寺山</option>
+            <option value="mocchi">もっちゃん</option>
+          </select>
+        </label>
+        <label>モード
+          <select id="mode">
+            <option value="neutral">中立</option>
+            <option value="romcom">ラブコメ</option>
+            <option value="horror">ホラー</option>
+            <option value="reportage">ルポ風</option>
+          </select>
+        </label>
+        <label>臭気レベル<span id="smellVal">2</span>
+          <input type="range" id="smell" min="0" max="5" step="1" value="2">
+        </label>
+        <label>敬語⇄タメ口
+          <input type="range" id="polite" min="0" max="10" step="1" value="5">
+        </label>
+      </div>
+      <div class="char-intro" id="charIntro"></div>
+    </section>
+
+    <section class="chat" id="chat">
+      <div class="msg npc">
+        <div class="name">小島</div>
+        <div class="bubble">やあ。俺、小島銀一。発酵は……止まんねぇからよ。ここで話そうか。</div>
+      </div>
+    </section>
+
+    <form id="composer">
+      <input type="text" id="input" placeholder="メッセージを入力（Enterで送信）" autocomplete="off" />
+      <button type="submit">送信</button>
+    </form>
+
+    <footer>
+      <div class="tips">
+        キャラクターやモード、スライダーを変えて、いろいろ話しかけてみてください。
+      </div>
+    </footer>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

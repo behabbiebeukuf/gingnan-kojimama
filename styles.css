@@ -1,0 +1,296 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* ここで画像を背景にする */
+  background: url("background.jpg") center center / cover no-repeat fixed;
+
+  color: #f5f5f5;
+}
+
+/* Login screen */
+
+.login-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  z-index: 10;
+}
+
+.login-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.5);
+}
+
+.login-overlay {
+  position: relative;
+  z-index: 11;
+  padding: 1.5rem 2rem;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.65);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 260px;
+  max-width: 360px;
+}
+
+.login-overlay h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.login-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.login-overlay input {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+}
+
+.login-overlay button {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+#audioToggle {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+#loginButton {
+  background: #f9d15b;
+}
+
+/* App layout */
+
+.app {
+  max-width: 860px;
+  margin: 1.5rem auto;
+  padding: 1rem 1.25rem 1.5rem;
+  border-radius: 16px;
+  background: radial-gradient(circle at top left, #333 0, #111 55%, #050608 100%);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.3rem;
+}
+
+.nav-link {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.panel.persona {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.35);
+}
+
+.panel.persona h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(160px,1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.grid select,
+.grid input[type="range"] {
+  width: 100%;
+}
+
+.char-intro {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+/* Chat */
+
+.chat {
+  margin-top: 1rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.4);
+}
+
+.msg {
+  margin-bottom: 0.5rem;
+}
+
+.msg .name {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-bottom: 0.1rem;
+}
+
+.msg .bubble {
+  display: inline-block;
+  padding: 0.5rem 0.7rem;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.msg.npc .bubble {
+  background: rgba(255,255,255,0.12);
+}
+
+.msg.user {
+  text-align: right;
+}
+
+.msg.user .bubble {
+  background: #f9d15b;
+  color: #000;
+}
+
+/* Composer */
+
+#composer {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+#composer input[type="text"] {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  border-radius: 999px;
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+}
+
+#composer button {
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  background: #f9d15b;
+}
+
+/* Footer */
+
+footer {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* Library page layout (used in library.html) */
+
+.library {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+}
+
+.library h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.library-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.library-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: #fff;
+}
+
+.library-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.library-content {
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
