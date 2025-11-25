@@ -77,7 +77,7 @@
       margin-bottom: 4px;
     }
     #startButton {
-      margin: 8px 0;
+      margin: 6px 0;
       padding: 8px 16px;
       border-radius: 999px;
       border: none;
@@ -86,11 +86,12 @@
       font-weight: 600;
       cursor: pointer;
       box-shadow: 0 0 12px rgba(251,191,36,0.35);
+      font-size: 13px;
     }
     #startButton:hover { filter: brightness(1.05); }
     #startButton:active {
       transform: translateY(1px);
-      box-shadow: 0 0 6px rgba(251,191,36,0.25);
+      box-shadow: 0 0 6px rgba(0,0,0,0.25);
     }
     #help {
       font-size: 12px;
@@ -836,7 +837,7 @@
       keys[e.code] = false;
     });
 
-    // マウス / タップで会話送り・リトライ
+    // マウス / タップで会話送り・リトライ・スタート
     canvas.addEventListener("mousedown", () => {
       if (dialogueActive) {
         showNextDialogue();
@@ -1084,7 +1085,7 @@
         ctx.fillStyle = "#f9fafb";
         ctx.font = "24px system-ui";
         ctx.textAlign = "center";
-        ctx.fillText("ぎんなん幻想弾幕譚", canvas.width / 2, canvas.height / 2 - 40);
+        ctx.fillText("ぎんな幻想弾幕譚", canvas.width / 2, canvas.height / 2 - 40);
         ctx.font = "14px system-ui";
         ctx.fillText("Tap / Space / ボタン で開始", canvas.width / 2, canvas.height / 2 + 4);
       } else if (phase === PHASE_GAMEOVER) {
