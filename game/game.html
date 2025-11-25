@@ -223,7 +223,7 @@
         <div>操作説明</div>
         <div id="help">
           PC：Z＝ショット / X＝ボム / Shift＝低速 / ←→↑↓ or WASD＝移動 / Space＝会話送り・リトライ<br>
-          スマホ：画面下の丸いパッドで移動、右のボタンでショット・ボム・低速<br>
+          スマホ：画面下の丸いパッドで移動、右のボタンでショット・ボム・低速・INF<br>
           会話は「画面タップ」または Space キーで次へ進みます
         </div>
 
@@ -249,9 +249,14 @@
         <button class="touchBtn" id="btnShot"><span>SHOT</span></button>
         <button class="touchBtn touchBtn-bomb" id="btnBomb"><span>BOMB</span></button>
         <button class="touchBtn touchBtn-slow" id="btnSlow"><span>SLOW</span></button>
+        <!-- スマホ用 無敵トグルボタン -->
+        <button class="touchBtn" id="btnInf"><span>INF</span></button>
       </div>
     </div>
   </div>
+
+  <!-- BGM（bgm.wav は同じフォルダに置く） -->
+  <audio id="bgm" src="bgm.wav" loop preload="auto"></audio>
 
   <script>
     const canvas = document.getElementById("game");
@@ -268,6 +273,7 @@
     const btnShot = document.getElementById("btnShot");
     const btnBomb = document.getElementById("btnBomb");
     const btnSlow = document.getElementById("btnSlow");
+    const btnInf  = document.getElementById("btnInf");
 
     let touchMoveActive = false;
     let touchMoveDx = 0;
@@ -283,9 +289,11 @@
     let stageBgLoaded = false;
     stageBg.addEventListener("load", () => { stageBgLoaded = true; });
 
-    // サウンド
-    const bgm = new Audio("bgm.wav");
-    bgm.loop = true;
+    // サウンド（BGMは <audio> を利用）
+    const bgm = document.getElementById("bgm");
+    if (bgm) {
+      bgm.volume = 1.0;
+    }
 
     const enemyHitSe = new Audio("敵が攻撃食らってる音.wav");
     enemyHitSe.volume = 0.9;
@@ -360,14 +368,6 @@
 
     let keys = {};
 
-    // 会話関連
-    let dialogueActive = false;
-    let dialogueLines = []; // {speaker,text} の配列
-    let dialogueIndex = 0;
-    let dialogueOnComplete = null;
-    let currentDialogueText = "";
-    let currentSpeaker = "";
-
     // ==== ログ ====
     function clearLog() {
       logBox.innerHTML = "";
@@ -380,6 +380,13 @@
     }
 
     // ==== 会話処理 ====
+    let dialogueActive = false;
+    let dialogueLines = [];
+    let dialogueIndex = 0;
+    let dialogueOnComplete = null;
+    let currentDialogueText = "";
+    let currentSpeaker = "";
+
     function normalizeDialogueLines(lines) {
       return lines.map(line => {
         if (typeof line === "string") {
@@ -501,7 +508,7 @@
       }
     }
 
-    // ==== プレイヤー ====
+    // ==== プレイヤー＆ゲーム開始 ====
     function resetPlayer() {
       player.invincibleTime = 1.5;
       player.x = canvas.width / 2;
@@ -525,8 +532,10 @@
       resetPlayer();
 
       try {
-        bgm.currentTime = 0;
-        bgm.play();
+        if (bgm) {
+          bgm.currentTime = 0;
+          bgm.play();
+        }
       } catch (e) {
         console.warn("BGM play failed:", e);
       }
@@ -583,7 +592,7 @@
       clearLog();
       logMessage("GAME OVER：この店も、発酵の歴史に刻まれてしまった…。");
       logMessage("Spaceキーかボタン、または画面タップでリトライできます。");
-      try { bgm.pause(); } catch(e){}
+      try { if (bgm) bgm.pause(); } catch(e){}
     }
 
     function gameClear() {
@@ -592,7 +601,7 @@
       logMessage("CLEAR：ぎんなんの亡霊は、今日も最後まで片付けをして去っていった。");
       logMessage("店はギリギリ生き残った。たぶん。");
       logMessage("Spaceキーかボタン、または画面タップで再挑戦できます。");
-      try { bgm.pause(); } catch(e){}
+      try { if (bgm) bgm.pause(); } catch(e){}
     }
 
     function useBomb() {
@@ -665,8 +674,7 @@
         const count = 24;
         const speed = 140;
         for (let i = 0; i < count; i++) {
-          const angle =
-            (Math.PI * 2 * i) / count + boss.ringOffset;
+          const angle = (Math.PI * 2 * i) / count + boss.ringOffset;
           bullets.push(new Bullet(boss.x, boss.y, angle, speed, "enemy", 5));
         }
         boss.ringOffset += 0.2;
@@ -677,7 +685,6 @@
       const spiralInterval = 0.05;
       const aimedInterval = 0.7;
 
-      // スパイラル弾
       if (boss.timer >= spiralInterval) {
         boss.timer -= spiralInterval;
         const angle = phaseTime * 4.0;
@@ -685,12 +692,10 @@
         bullets.push(new Bullet(boss.x, boss.y, angle, speed, "enemy", 4));
       }
 
-      // ねらいショット
       const prevBucket = Math.floor((phaseTime - dt) / aimedInterval);
       const nowBucket = Math.floor(phaseTime / aimedInterval);
       if (nowBucket !== prevBucket) {
-        const baseAngle =
-          Math.atan2(player.y - boss.y, player.x - boss.x);
+        const baseAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
         const spread = (Math.PI / 180) * 15;
         const speed = 220;
         for (let i = -2; i <= 2; i++) {
@@ -708,10 +713,8 @@
         const speedMax = 260;
         for (let i = 0; i < 6; i++) {
           const x = 40 + Math.random() * (canvas.width - 80);
-          const angle =
-            Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 12);
-          const speed =
-            speedMin + Math.random() * (speedMax - speedMin);
+          const angle = Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 12);
+          const speed = speedMin + Math.random() * (speedMax - speedMin);
           bullets.push(new Bullet(x, -20, angle, speed, "enemy", 6));
         }
       }
@@ -720,13 +723,11 @@
     function updateBoss(dt) {
       boss.timer += dt;
 
-      // ボス左右移動
       const centerX = canvas.width / 2;
       const amplitude = 150;
       const speed = 0.6;
       boss.x = centerX + Math.sin(phaseTime * speed) * amplitude;
 
-      // HPでパターン切り替え
       const hpRate = boss.hp / boss.maxHp;
       if (hpRate > 0.7) {
         bossPatternRing(dt);
@@ -736,7 +737,6 @@
         bossPatternRain(dt);
       }
 
-      // 倒されたか
       if (boss.hp <= 0 && phase !== PHASE_CLEAR) {
         gameClear();
       }
@@ -744,14 +744,12 @@
 
     // ==== 衝突判定 ====
     function checkCollisions(dt) {
-      // プレイヤー vs 敵弾
       for (const b of bullets) {
         if (b.owner !== "enemy") continue;
         const dx = b.x - player.x;
         const dy = b.y - player.y;
         const dist = Math.hypot(dx, dy);
 
-        // グレイズ
         if (!b.grazed &&
             dist < player.grazeRadius + b.r &&
             dist > player.radius + b.r) {
@@ -760,7 +758,6 @@
           score += 50;
         }
 
-        // 被弾
         if (dist < player.radius + b.r) {
           if (!cheatInvincible) {
             damagePlayer();
@@ -769,7 +766,6 @@
         }
       }
 
-      // プレイヤー弾 vs ボス
       if (phase === PHASE_BOSS) {
         for (const b of bullets) {
           if (b.owner !== "player") continue;
@@ -861,7 +857,7 @@
       }
     }, {passive:false});
 
-    // チート無敵
+    // チート無敵（PC）
     cheatCheckbox.addEventListener("change", () => {
       cheatInvincible = cheatCheckbox.checked;
       logMessage(cheatInvincible
@@ -944,91 +940,19 @@
       btnSlow.addEventListener("touchend", (e)=>{ e.preventDefault(); touchSlow = false; }, {passive:false});
       btnSlow.addEventListener("touchcancel", (e)=>{ e.preventDefault(); touchSlow = false; }, {passive:false});
     }
-
-    // ==== メインループ ====
-    let lastTime = 0;
-    function loop(timestamp) {
-      if (!lastTime) lastTime = timestamp;
-      const dt = Math.min((timestamp - lastTime) / 1000, 0.033);
-      lastTime = timestamp;
-
-      phaseTime += dt;
-      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
-        timeSec += dt;
-      }
-
-      enemyAnimTime += dt;
-      bossAnimTime += dt;
-
-      // 更新
-      update(dt);
-      // 描画
-      draw();
-
-      requestAnimationFrame(loop);
+    // スマホ用 INF ボタン
+    if (btnInf) {
+      btnInf.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        cheatInvincible = !cheatInvincible;
+        cheatCheckbox.checked = cheatInvincible;
+        logMessage(cheatInvincible
+          ? "チートON：敵弾無効化（INF）。"
+          : "チートOFF：通常モードに戻りました。");
+      }, { passive: false });
     }
 
-    function update(dt) {
-      // プレイヤー移動
-      let moveX = 0;
-      let moveY = 0;
-      if (keys["ArrowLeft"] || keys["KeyA"]) moveX -= 1;
-      if (keys["ArrowRight"] || keys["KeyD"]) moveX += 1;
-      if (keys["ArrowUp"] || keys["KeyW"]) moveY -= 1;
-      if (keys["ArrowDown"] || keys["KeyS"]) moveY += 1;
-
-      moveX += touchMoveDx;
-      moveY += touchMoveDy;
-
-      const len = Math.hypot(moveX, moveY);
-      if (len > 0) {
-        moveX /= len;
-        moveY /= len;
-      }
-
-      const isSlow = keys["ShiftLeft"] || keys["ShiftRight"] || touchSlow;
-      const speed = isSlow ? player.slowSpeed : player.speed;
-
-      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
-        player.x += moveX * speed * dt;
-        player.y += moveY * speed * dt;
-        player.x = Math.max(20, Math.min(canvas.width - 20, player.x));
-        player.y = Math.max(40, Math.min(canvas.height - 20, player.y));
-      }
-
-      if (player.invincibleTime > 0) {
-        player.invincibleTime -= dt;
-        if (player.invincibleTime < 0) player.invincibleTime = 0;
-      }
-
-      // ショット
-      if (shotCooldown > 0) shotCooldown -= dt;
-      const wantShot = keys["KeyZ"] || touchShot;
-      if ((phase === PHASE_STAGE || phase === PHASE_BOSS) &&
-          wantShot && shotCooldown <= 0) {
-        shootPlayer();
-        shotCooldown = shotInterval;
-      }
-
-      // フェーズ別更新
-      if (phase === PHASE_STAGE) {
-        updateStage(dt);
-      } else if (phase === PHASE_BOSS) {
-        updateBoss(dt);
-      }
-
-      // 弾・パーティクル更新
-      for (const b of bullets) b.update(dt);
-      for (const p of particles) p.update(dt);
-      particles = particles.filter(p => p.life > 0);
-
-      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
-        checkCollisions(dt);
-      }
-
-      updateStatusBar();
-    }
-
+    // ==== 描画 ====
     function drawBackground() {
       if (stageBgLoaded) {
         const patH = canvas.height;
@@ -1058,7 +982,6 @@
       ctx.fill();
       ctx.restore();
 
-      // 当たり判定の中心ドット
       ctx.beginPath();
       ctx.arc(player.x, player.y, 2, 0, Math.PI * 2);
       ctx.fillStyle = "#f9fafb";
@@ -1088,7 +1011,6 @@
         ctx.fill();
       }
 
-      // HPバー
       const barWidth = 260;
       const barHeight = 10;
       const x = (canvas.width - barWidth) / 2;
@@ -1100,6 +1022,24 @@
       ctx.fillRect(x, y, barWidth * rate, barHeight);
       ctx.strokeStyle = "#fbbf24";
       ctx.strokeRect(x, y, barWidth, barHeight);
+    }
+
+    function wrapText(text, maxWidth, context) {
+      const words = text.split("");
+      let line = "";
+      const lines = [];
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i];
+        const w = context.measureText(testLine).width;
+        if (w > maxWidth && line !== "") {
+          lines.push(line);
+          line = words[i];
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
     }
 
     function drawDialogueBox() {
@@ -1135,24 +1075,6 @@
       ctx.font = "11px system-ui";
       ctx.fillStyle = "#9ca3af";
       ctx.fillText("（タップ / Space で次へ）", x + w - 140, y + h - 10);
-    }
-
-    function wrapText(text, maxWidth, context) {
-      const words = text.split("");
-      let line = "";
-      const lines = [];
-      for (let i = 0; i < words.length; i++) {
-        const testLine = line + words[i];
-        const w = context.measureText(testLine).width;
-        if (w > maxWidth && line !== "") {
-          lines.push(line);
-          line = words[i];
-        } else {
-          line = testLine;
-        }
-      }
-      if (line) lines.push(line);
-      return lines;
     }
 
     function drawOverlay() {
@@ -1193,24 +1115,97 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawBackground();
 
-      // 弾・プレイヤー・ボス
       for (const b of bullets) b.draw(ctx);
       for (const p of particles) p.draw(ctx);
       drawPlayer();
       drawBoss();
-
-      // 会話ウィンドウ
       drawDialogueBox();
-
-      // タイトル / リザルトオーバーレイ
       drawOverlay();
     }
 
-    // 初期ログ
+    // ==== 更新処理 ====
+    function update(dt) {
+      let moveX = 0;
+      let moveY = 0;
+      if (keys["ArrowLeft"] || keys["KeyA"]) moveX -= 1;
+      if (keys["ArrowRight"] || keys["KeyD"]) moveX += 1;
+      if (keys["ArrowUp"] || keys["KeyW"]) moveY -= 1;
+      if (keys["ArrowDown"] || keys["KeyS"]) moveY += 1;
+
+      moveX += touchMoveDx;
+      moveY += touchMoveDy;
+
+      const len = Math.hypot(moveX, moveY);
+      if (len > 0) {
+        moveX /= len;
+        moveY /= len;
+      }
+
+      const isSlow = keys["ShiftLeft"] || keys["ShiftRight"] || touchSlow;
+      const speed = isSlow ? player.slowSpeed : player.speed;
+
+      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
+        player.x += moveX * speed * dt;
+        player.y += moveY * speed * dt;
+        player.x = Math.max(20, Math.min(canvas.width - 20, player.x));
+        player.y = Math.max(40, Math.min(canvas.height - 20, player.y));
+      }
+
+      if (player.invincibleTime > 0) {
+        player.invincibleTime -= dt;
+        if (player.invincibleTime < 0) player.invincibleTime = 0;
+      }
+
+      if (shotCooldown > 0) shotCooldown -= dt;
+      const wantShot = keys["KeyZ"] || touchShot;
+      if ((phase === PHASE_STAGE || phase === PHASE_BOSS) &&
+          wantShot && shotCooldown <= 0) {
+        shootPlayer();
+        shotCooldown = shotInterval;
+      }
+
+      if (phase === PHASE_STAGE) {
+        updateStage(dt);
+      } else if (phase === PHASE_BOSS) {
+        updateBoss(dt);
+      }
+
+      for (const b of bullets) b.update(dt);
+      for (const p of particles) p.update(dt);
+      particles = particles.filter(p => p.life > 0);
+
+      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
+        checkCollisions(dt);
+      }
+
+      updateStatusBar();
+    }
+
+    // ==== メインループ ====
+    let lastTime = 0;
+    function loop(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const dt = Math.min((timestamp - lastTime) / 1000, 0.033);
+      lastTime = timestamp;
+
+      phaseTime += dt;
+      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
+        timeSec += dt;
+      }
+
+      enemyAnimTime += dt;
+      bossAnimTime += dt;
+
+      update(dt);
+      draw();
+
+      requestAnimationFrame(loop);
+    }
+
+    // 初期ログ＆ループ開始
     clearLog();
     logMessage("『ぎんな弾幕譚』へようこそ。");
     logMessage("Space / 画面タップ / ボタン からスタートできます。");
-
     requestAnimationFrame(loop);
   </script>
 </body>
