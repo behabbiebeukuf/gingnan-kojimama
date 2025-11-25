@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>ぎんなん幻想弾幕譚 - Kojima Bullet Hell</title>
   <style>
     * { box-sizing: border-box; }
@@ -63,7 +64,6 @@
       font-size: 11px;
       opacity: 0.9;
     }
-    #statusBar { display:none; }
     #statusPanel {
       padding: 8px 10px;
       border-radius: 8px;
@@ -153,6 +153,7 @@
       top: 50%;
       transform: translate(-50%, -50%);
       opacity: 0.9;
+      pointer-events: none;
     }
     #touchButtons {
       display: flex;
@@ -221,13 +222,14 @@
         </div>
         <div>操作説明</div>
         <div id="help">
-          PC：Z＝ショット / X＝ボム / Shift＝低速 / ←→↑↓ or WASD＝移動<br>
+          PC：Z＝ショット / X＝ボム / Shift＝低速 / ←→↑↓ or WASD＝移動 / Space＝会話送り・リトライ<br>
           スマホ：画面下の丸いパッドで移動、右のボタンでショット・ボム・低速<br>
-          会話は「画面タップ」で次へ進みます
+          会話は「画面タップ」または Space キーで次へ進みます
         </div>
 
         <label style="display:block; margin:8px 0; font-size:13px; color:#fbbf24; user-select:none;">
-          <input type="checkbox" id="cheatInvincible"> ■ 敵の攻撃無効化（INF / チート）
+          <input type="checkbox" id="cheatInvincible">
+          ■ 敵の攻撃無効化（INF / チート）
         </label>
 
         <button id="startButton">ゲームスタート / リトライ</button>
@@ -275,18 +277,20 @@
 
     let cheatInvincible = false;
 
-    // ステージ背景
+    // 背景
     const stageBg = new Image();
     stageBg.src = "stage_bg.png";
     let stageBgLoaded = false;
     stageBg.addEventListener("load", () => { stageBgLoaded = true; });
 
+    // サウンド
     const bgm = new Audio("bgm.wav");
     bgm.loop = true;
 
     const enemyHitSe = new Audio("敵が攻撃食らってる音.wav");
     enemyHitSe.volume = 0.9;
 
+    // 敵弾スプライト
     const enemySheet = new Image();
     enemySheet.src = "enemy/enemy_bullet_sheet.png";
     const ENEMY_FRAME_W = 220;
@@ -295,6 +299,7 @@
     const ENEMY_FRAME_DURATION = 0.06;
     let enemyAnimTime = 0;
 
+    // ボススプライト
     const bossSheet = new Image();
     bossSheet.src = "boss/boss_sheet.png";
     const BOSS_FRAME_W = 640;
@@ -303,14 +308,7 @@
     const BOSS_FRAME_DURATION = 0.08;
     let bossAnimTime = 0;
 
-    // 立ち絵（なくてもOK・ある場合は portraits フォルダに置く）
-    const portraitImages = {
-      "小島": new Image(),
-      "プレイヤー": new Image()
-    };
-    portraitImages["小島"].src = "portraits/kojima.png";
-    portraitImages["プレイヤー"].src = "portraits/player.png";
-
+    // フェーズ
     const PHASE_TITLE = "TITLE";
     const PHASE_STAGE = "STAGE";
     const PHASE_BOSS_TALK = "BOSS_TALK";
@@ -322,6 +320,7 @@
     let phaseTime = 0;
     let timeSec = 0;
 
+    // プレイヤー
     const player = {
       x: canvas.width / 2,
       y: canvas.height - 60,
@@ -347,6 +346,7 @@
     let stageTimer = 0;
     let stageStarted = false;
 
+    // ボス
     const boss = {
       x: canvas.width / 2,
       y: 140,
@@ -368,6 +368,7 @@
     let currentDialogueText = "";
     let currentSpeaker = "";
 
+    // ==== ログ ====
     function clearLog() {
       logBox.innerHTML = "";
     }
@@ -378,6 +379,7 @@
       logBox.scrollTop = logBox.scrollHeight;
     }
 
+    // ==== 会話処理 ====
     function normalizeDialogueLines(lines) {
       return lines.map(line => {
         if (typeof line === "string") {
@@ -426,6 +428,7 @@
       }
     }
 
+    // ==== 弾・パーティクル ====
     class Bullet {
       constructor(x, y, angle, speed, owner, radius) {
         this.x = x;
@@ -447,10 +450,14 @@
         }
       }
       draw(ctx) {
-        if (this.owner === "enemy" && enemySheet.complete && enemySheet.naturalWidth > 0) {
+        if (this.owner === "enemy" &&
+            enemySheet.complete &&
+            enemySheet.naturalWidth > 0) {
           const size = this.r * 2.4;
-          const localTime = enemyAnimTime + this.animOffset * ENEMY_FRAME_DURATION;
-          const frameIndex = Math.floor(localTime / ENEMY_FRAME_DURATION) % ENEMY_FRAME_COUNT;
+          const localTime =
+            enemyAnimTime + this.animOffset * ENEMY_FRAME_DURATION;
+          const frameIndex =
+            Math.floor(localTime / ENEMY_FRAME_DURATION) % ENEMY_FRAME_COUNT;
           const sx = frameIndex * ENEMY_FRAME_W;
           const sy = 0;
           ctx.drawImage(
@@ -494,8 +501,11 @@
       }
     }
 
+    // ==== プレイヤー ====
     function resetPlayer() {
       player.invincibleTime = 1.5;
+      player.x = canvas.width / 2;
+      player.y = canvas.height - 60;
     }
 
     function startGame() {
@@ -512,9 +522,7 @@
       shotCooldown = 0;
       stageTimer = 0;
       stageStarted = false;
-      player.x = canvas.width / 2;
-      player.y = canvas.height - 60;
-      player.invincibleTime = 0;
+      resetPlayer();
 
       try {
         bgm.currentTime = 0;
@@ -575,6 +583,7 @@
       clearLog();
       logMessage("GAME OVER：この店も、発酵の歴史に刻まれてしまった…。");
       logMessage("Spaceキーかボタン、または画面タップでリトライできます。");
+      try { bgm.pause(); } catch(e){}
     }
 
     function gameClear() {
@@ -583,6 +592,7 @@
       logMessage("CLEAR：ぎんなんの亡霊は、今日も最後まで片付けをして去っていった。");
       logMessage("店はギリギリ生き残った。たぶん。");
       logMessage("Spaceキーかボタン、または画面タップで再挑戦できます。");
+      try { bgm.pause(); } catch(e){}
     }
 
     function useBomb() {
@@ -613,6 +623,7 @@
     }
 
     function damagePlayer() {
+      if (cheatInvincible) return;
       if (player.invincibleTime > 0) return;
       life--;
       player.invincibleTime = 2.0;
@@ -625,25 +636,7 @@
       }
     }
 
-    function updateStatusBar() {
-      const lifeStr = life >= 0 ? "♥".repeat(life) : "";
-      statusLine1.textContent =
-        "LIFE " + lifeStr +
-        "   BOMB " + bombs +
-        "  PWR " + power +
-        "  Graze " + graze +
-        "  Score " + score;
-      let phaseLabel = "";
-      if (phase === PHASE_TITLE) phaseLabel = "TITLE";
-      else if (phase === PHASE_STAGE) phaseLabel = "STAGE 1";
-      else if (phase === PHASE_BOSS_TALK) phaseLabel = "BOSS TALK";
-      else if (phase === PHASE_BOSS) phaseLabel = "BOSS";
-      else if (phase === PHASE_CLEAR) phaseLabel = "CLEAR";
-      else if (phase === PHASE_GAMEOVER) phaseLabel = "GAME OVER";
-      statusLine2.textContent =
-        "Phase " + phaseLabel + "   Time " + timeSec.toFixed(1) + "s";
-    }
-
+    // ==== ステージ ====
     function updateStage(dt) {
       if (!stageStarted) return;
       stageTimer += dt;
@@ -664,6 +657,7 @@
       }
     }
 
+    // ==== ボスパターン ====
     function bossPatternRing(dt) {
       const interval = 0.25;
       if (boss.timer >= interval) {
@@ -671,7 +665,8 @@
         const count = 24;
         const speed = 140;
         for (let i = 0; i < count; i++) {
-          const angle = (Math.PI * 2 * i) / count + boss.ringOffset;
+          const angle =
+            (Math.PI * 2 * i) / count + boss.ringOffset;
           bullets.push(new Bullet(boss.x, boss.y, angle, speed, "enemy", 5));
         }
         boss.ringOffset += 0.2;
@@ -682,6 +677,7 @@
       const spiralInterval = 0.05;
       const aimedInterval = 0.7;
 
+      // スパイラル弾
       if (boss.timer >= spiralInterval) {
         boss.timer -= spiralInterval;
         const angle = phaseTime * 4.0;
@@ -689,10 +685,12 @@
         bullets.push(new Bullet(boss.x, boss.y, angle, speed, "enemy", 4));
       }
 
+      // ねらいショット
       const prevBucket = Math.floor((phaseTime - dt) / aimedInterval);
       const nowBucket = Math.floor(phaseTime / aimedInterval);
       if (nowBucket !== prevBucket) {
-        const baseAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
+        const baseAngle =
+          Math.atan2(player.y - boss.y, player.x - boss.x);
         const spread = (Math.PI / 180) * 15;
         const speed = 220;
         for (let i = -2; i <= 2; i++) {
@@ -710,8 +708,10 @@
         const speedMax = 260;
         for (let i = 0; i < 6; i++) {
           const x = 40 + Math.random() * (canvas.width - 80);
-          const angle = Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 12);
-          const speed = speedMin + Math.random() * (speedMax - speedMin);
+          const angle =
+            Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 12);
+          const speed =
+            speedMin + Math.random() * (speedMax - speedMin);
           bullets.push(new Bullet(x, -20, angle, speed, "enemy", 6));
         }
       }
@@ -719,1117 +719,89 @@
 
     function updateBoss(dt) {
       boss.timer += dt;
+
+      // ボス左右移動
       const centerX = canvas.width / 2;
       const amplitude = 150;
       const speed = 0.6;
       boss.x = centerX + Math.sin(phaseTime * speed) * amplitude;
 
-      if (boss.phase === 1) {
+      // HPでパターン切り替え
+      const hpRate = boss.hp / boss.maxHp;
+      if (hpRate > 0.7) {
         bossPatternRing(dt);
-        if (boss.hp < boss.maxHp * 0.65) {
-          boss.phase = 2;
-          boss.timer = 0;
-          logMessage("小島：まだまだだな…。じゃあ、狙い撃ちでいくか。");
-        }
-      } else if (boss.phase === 2) {
+      } else if (hpRate > 0.35) {
         bossPatternSpiralAimed(dt);
-        if (boss.hp < boss.maxHp * 0.3) {
-          boss.phase = 3;
-          boss.timer = 0;
-          logMessage("小島：終盤の片付けタイムだ…。発酵、フルパワー。");
-        }
-      } else if (boss.phase === 3) {
+      } else {
         bossPatternRain(dt);
-        if (boss.hp <= 0) {
-          gameClear();
-        }
+      }
+
+      // 倒されたか
+      if (boss.hp <= 0 && phase !== PHASE_CLEAR) {
+        gameClear();
       }
     }
 
-    function updateBullets(dt) {
-      for (let b of bullets) {
-        b.update(dt);
-        if (!b.alive) continue;
+    // ==== 衝突判定 ====
+    function checkCollisions(dt) {
+      // プレイヤー vs 敵弾
+      for (const b of bullets) {
+        if (b.owner !== "enemy") continue;
+        const dx = b.x - player.x;
+        const dy = b.y - player.y;
+        const dist = Math.hypot(dx, dy);
 
-        if (b.owner === "enemy" &&
-            (phase === PHASE_STAGE || phase === PHASE_BOSS) &&
-            !dialogueActive) {
-          const dx = b.x - player.x;
-          const dy = b.y - player.y;
-          const dist2 = dx * dx + dy * dy;
-
-          const hitR = (player.radius + b.r * 0.7);
-          const grazeR = (player.grazeRadius + b.r);
-
-          if (player.invincibleTime <= 0 && !cheatInvincible && dist2 < hitR * hitR) {
-            b.alive = false;
-            damagePlayer();
-            continue;
-          } else if (!b.grazed && dist2 < grazeR * grazeR) {
-            b.grazed = true;
-            graze++;
-            score += 5;
-          }
+        // グレイズ
+        if (!b.grazed &&
+            dist < player.grazeRadius + b.r &&
+            dist > player.radius + b.r) {
+          b.grazed = true;
+          graze++;
+          score += 50;
         }
 
-        if (b.owner === "player" && phase === PHASE_BOSS && boss.hp > 0) {
+        // 被弾
+        if (dist < player.radius + b.r) {
+          if (!cheatInvincible) {
+            damagePlayer();
+          }
+          b.alive = false;
+        }
+      }
+
+      // プレイヤー弾 vs ボス
+      if (phase === PHASE_BOSS) {
+        for (const b of bullets) {
+          if (b.owner !== "player") continue;
           const dx = b.x - boss.x;
           const dy = b.y - boss.y;
-          const dist2 = dx * dx + dy * dy;
-          const r = boss.radius + b.r;
-          if (dist2 < r * r) {
+          const dist = Math.hypot(dx, dy);
+          if (dist < boss.radius + b.r) {
             b.alive = false;
             boss.hp -= 10;
-            score += 10;
-            try {
+            score += 100;
+            if (!isNaN(enemyHitSe.duration)) {
               enemyHitSe.currentTime = 0;
-              enemyHitSe.play();
-            } catch (e) {
-              console.warn("enemy hit se play failed", e);
+              enemyHitSe.play().catch(()=>{});
             }
-            for (let i = 0; i < 3; i++) {
-              particles.push(new Particle(b.x, b.y));
-            }
+            particles.push(new Particle(b.x, b.y));
           }
         }
       }
+
       bullets = bullets.filter(b => b.alive);
     }
 
-    function updateParticles(dt) {
-      for (let p of particles) {
-        p.update(dt);
-      }
-      particles = particles.filter(p => p.life > 0);
-    }
-
-    function updatePlayer(dt) {
-      if (dialogueActive) return;
-      if (phase !== PHASE_STAGE && phase !== PHASE_BOSS) return;
-
-      let mx = 0;
-      let my = 0;
-
-      if (touchMoveActive) {
-        mx = touchMoveDx;
-        my = touchMoveDy;
-      } else {
-        if (keys["ArrowLeft"] || keys["KeyA"]) mx -= 1;
-        if (keys["ArrowRight"] || keys["KeyD"]) mx += 1;
-        if (keys["ArrowUp"] || keys["KeyW"]) my -= 1;
-        if (keys["ArrowDown"] || keys["KeyS"]) my += 1;
-        if (mx !== 0 || my !== 0) {
-          const len = Math.hypot(mx, my);
-          mx /= len;
-          my /= len;
-        }
-      }
-
-      const isSlow = (keys["ShiftLeft"] || keys["ShiftRight"] || touchSlow);
-      const spd = isSlow ? player.slowSpeed : player.speed;
-
-      player.x += mx * spd * dt;
-      player.y += my * spd * dt;
-
-      if (player.x < 20) player.x = 20;
-      if (player.x > canvas.width - 20) player.x = canvas.width - 20;
-      if (player.y < 40) player.y = 40;
-      if (player.y > canvas.height - 20) player.y = canvas.height - 20;
-
-      if (player.invincibleTime > 0) {
-        player.invincibleTime -= dt;
-        if (player.invincibleTime < 0) player.invincibleTime = 0;
-      }
-
-      shotCooldown -= dt;
-      if (shotCooldown < 0) shotCooldown = 0;
-
-      const shooting = (keys["KeyZ"] || touchShot);
-      if ((phase === PHASE_STAGE || phase === PHASE_BOSS) &&
-          shooting && shotCooldown <= 0) {
-        shootPlayer();
-        shotCooldown = shotInterval;
-      }
-    }
-
-    function update(dt) {
-      enemyAnimTime += dt;
-      bossAnimTime += dt;
-
-      if (phase === PHASE_STAGE || phase === PHASE_BOSS || phase === PHASE_BOSS_TALK) {
-        phaseTime += dt;
-        timeSec += dt;
-      }
-
-      if (phase === PHASE_STAGE) {
-        updateStage(dt);
-      } else if (phase === PHASE_BOSS) {
-        updateBoss(dt);
-      }
-
-      updatePlayer(dt);
-      updateBullets(dt);
-      updateParticles(dt);
-      updateStatusBar();
-    }
-
-    function drawBackground() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (stageBgLoaded) {
-        const iw = stageBg.width;
-        const ih = stageBg.height;
-        const cw = canvas.width;
-        const ch = canvas.height;
-
-        const scale = Math.max(cw / iw, ch / ih);
-        const dw = iw * scale;
-        const dh = ih * scale;
-
-        const dx = (cw - dw) / 2;
-        const dy = (ch - dh) / 2;
-
-        ctx.drawImage(stageBg, dx, dy, dw, dh);
-      } else {
-        const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        g.addColorStop(0, "#020617");
-        g.addColorStop(0.4, "#0f172a");
-        g.addColorStop(1, "#020617");
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-
-      ctx.save();
-      ctx.strokeStyle = "rgba(15,23,42,0.9)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(10.5, 10.5, canvas.width - 21, canvas.height - 21);
-      ctx.restore();
-    }
-
-    function drawPlayer() {
-      ctx.save();
-      ctx.translate(player.x, player.y);
-      if (player.invincibleTime > 0 && Math.floor(player.invincibleTime * 10) % 2 === 0) {
-        ctx.globalAlpha = 0.4;
-      }
-      ctx.beginPath();
-      ctx.arc(0, 0, 6, 0, Math.PI * 2);
-      ctx.fillStyle = "#38bdf8";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
-      ctx.fillStyle = "#0f172a";
-      ctx.fill();
-      ctx.restore();
-    }
-
-    function drawBoss() {
-      if (phase !== PHASE_BOSS && phase !== PHASE_BOSS_TALK && phase !== PHASE_CLEAR) return;
-
-      if (bossSheet.complete && bossSheet.naturalWidth > 0) {
-        const frameIndex = Math.floor(bossAnimTime / BOSS_FRAME_DURATION) % BOSS_FRAME_COUNT;
-        const sx = frameIndex * BOSS_FRAME_W;
-        const sy = 0;
-        const size = boss.radius * 3.0;
-
-        ctx.drawImage(
-          bossSheet,
-          sx, sy, BOSS_FRAME_W, BOSS_FRAME_H,
-          boss.x - size / 2,
-          boss.y - size / 2,
-          size,
-          size
-        );
-      } else {
-        ctx.save();
-        ctx.translate(boss.x, boss.y);
-        const grd = ctx.createRadialGradient(0, 0, 4, 0, 0, boss.radius);
-        grd.addColorStop(0, "#facc15");
-        grd.addColorStop(1, "#92400e");
-        ctx.fillStyle = grd;
-        ctx.beginPath();
-        ctx.arc(0, 0, boss.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      if (phase === PHASE_BOSS) {
-        const barWidth = 160;
-        const barHeight = 6;
-        const ratio = Math.max(0, boss.hp) / boss.maxHp;
-        ctx.save();
-        ctx.translate(boss.x - barWidth / 2, boss.y - boss.radius - 28);
-        ctx.fillStyle = "rgba(15,23,42,0.8)";
-        ctx.fillRect(0, 0, barWidth, barHeight);
-        ctx.fillStyle = "#f97316";
-        ctx.fillRect(0, 0, barWidth * ratio, barHeight);
-        ctx.restore();
-      }
-    }
-
-    function drawBullets() {
-      for (let b of bullets) {
-        b.draw(ctx);
-      }
-    }
-
-    function drawParticles() {
-      for (let p of particles) {
-        p.draw(ctx);
-      }
-    }
-
-    // テキストをざっくり折り返す
-    function wrapTextLines(ctx, text, maxWidth) {
-      const lines = [];
-      let i = 0;
-      while (i < text.length) {
-        let len = 1;
-        while (i + len <= text.length) {
-          const test = text.slice(i, i + len);
-          const w = ctx.measureText(test).width;
-          if (w > maxWidth && len > 1) {
-            len--;
-            break;
-          }
-          if (w > maxWidth && len === 1) break;
-          len++;
-        }
-        lines.push(text.slice(i, i + len));
-        i += len;
-      }
-      return lines;
-    }
-
-    // 東方風 会話ウィンドウ
-    function drawDialogueOverlay() {
-      if (!dialogueActive || !currentDialogueText) return;
-
-      // 立ち絵エリア
-      const portraitW = 110;
-      const portraitH = 170;
-      const portraitX = 18;
-      const portraitY = canvas.height - portraitH - 26;
-
-      // テキストウィンドウ
-      const boxMargin = 18;
-      const boxHeight = 72;
-      const boxX = 40 + portraitW;             // 立ち絵の右から
-      const boxY = canvas.height - boxHeight - boxMargin;
-      const boxWidth = canvas.width - boxX - boxMargin;
-
-      ctx.save();
-
-      // 立ち絵
-      const img = portraitImages[currentSpeaker];
-      if (img && img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, portraitX, portraitY, portraitW, portraitH);
-      } else if (currentSpeaker) {
-        // 画像が無いときの仮表示
-        ctx.fillStyle = "rgba(248,250,252,0.1)";
-        ctx.fillRect(portraitX, portraitY, portraitW, portraitH);
-        ctx.strokeStyle = "rgba(248,250,252,0.3)";
-        ctx.strokeRect(portraitX + 0.5, portraitY + 0.5, portraitW - 1, portraitH - 1);
-        ctx.fillStyle = "#e5e7eb";
-        ctx.font = "13px system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(currentSpeaker, portraitX + portraitW / 2, portraitY + portraitH / 2);
-      }
-
-      // テキストボックス
-      ctx.fillStyle = "rgba(0,0,0,0.65)";
-      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-      ctx.strokeStyle = "rgba(148,163,184,0.9)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth - 1, boxHeight - 1);
-
-      const paddingX = 10;
-      const paddingY = 6;
-
-      // 話者名ラベル
-      if (currentSpeaker) {
-        ctx.font = "12px system-ui, sans-serif";
-        ctx.fillStyle = "#facc15";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-        ctx.fillText(currentSpeaker, boxX + paddingX, boxY + paddingY);
-      }
-
-      // 本文
-      ctx.font = "14px system-ui, sans-serif";
-      ctx.fillStyle = "#e5e7eb";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-
-      const textStartY = boxY + paddingY + (currentSpeaker ? 18 : 4);
-      const maxWidth = boxWidth - paddingX * 2;
-      const lines = wrapTextLines(ctx, currentDialogueText, maxWidth);
-      let y = textStartY;
-      for (const line of lines) {
-        ctx.fillText(line, boxX + paddingX, y);
-        y += 18;
-      }
-
-      // 右下「次へ」表示
-      ctx.font = "11px system-ui, sans-serif";
-      ctx.fillStyle = "#9ca3af";
-      const hint = "Tap / Space で次へ";
-      const hintWidth = ctx.measureText(hint).width;
-      ctx.fillText(hint, boxX + boxWidth - paddingX - hintWidth, boxY + boxHeight - paddingY - 16);
-
-      ctx.restore();
-    }
-
-    function drawInfoOverlay() {
-      if (phase === PHASE_TITLE) {
-        ctx.save();
-        ctx.fillStyle = "rgba(15,23,42,0.78)";
-        ctx.fillRect(60, 260, canvas.width - 120, 120);
-        ctx.fillStyle = "#e5e7eb";
-        ctx.textAlign = "center";
-        ctx.font = "18px system-ui, sans-serif";
-        ctx.fillText("Spaceキー / ボタン / 画面タップでスタート", canvas.width / 2, 320);
-        ctx.font = "13px system-ui, sans-serif";
-        ctx.fillText("スマホは下のパッド＋ボタン＋タップで操作", canvas.width / 2, 348);
-        ctx.restore();
-      }
-    }
-
-    function draw() {
-      drawBackground();
-      drawBoss();
-      drawBullets();
-      drawParticles();
-      drawPlayer();
-      drawInfoOverlay();
-      drawDialogueOverlay(); // 一番上に会話
-    }
-
-    let lastTime = 0;
-    function loop(timestamp) {
-      if (!lastTime) lastTime = timestamp;
-      let dt = (timestamp - lastTime) / 1000;
-      if (dt > 0.05) dt = 0.05;
-      lastTime = timestamp;
-
-      update(dt);
-      draw();
-      requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
-
-    // キーボード
-    window.addEventListener("keydown", (e) => {
-      keys[e.code] = true;
-
-      if (e.code === "Space") {
-        if (dialogueActive) {
-          e.preventDefault();
-          showNextDialogue();
-          return;
-        }
-        if (phase === PHASE_TITLE || phase === PHASE_CLEAR || phase === PHASE_GAMEOVER) {
-          e.preventDefault();
-          startGame();
-          return;
-        }
-      }
-
-      if (e.code === "KeyX") {
-        if (!dialogueActive && (phase === PHASE_STAGE || phase === PHASE_BOSS)) {
-          e.preventDefault();
-          useBomb();
-        }
-      }
-    });
-
-    window.addEventListener("keyup", (e) => {
-      keys[e.code] = false;
-    });
-
-    startButton.addEventListener("click", () => {
-      if (dialogueActive) return;
-      startGame();
-    });
-
-    // 画面タップで会話送り＆スタート
-    function handleTapForGame(e) {
-      if (e) e.preventDefault();
-
-      if (dialogueActive) {
-        showNextDialogue();
-      } else if (
-        phase === PHASE_TITLE ||
-        phase === PHASE_CLEAR ||
-        phase === PHASE_GAMEOVER
-      ) {
-        startGame();
-      }
-    }
-
-    canvas.addEventListener("click", handleTapForGame);
-    canvas.addEventListener("touchend", (e) => {
-      e.preventDefault();
-      handleTapForGame(e);
-    }, { passive: false });
-
-    // INF / チート
-    if (cheatCheckbox) {
-      cheatCheckbox.addEventListener("change", (e) => {
-        cheatInvincible = e.target.checked;
-        if (cheatInvincible) {
-          logMessage("※チート：敵の攻撃無効化 ON（INF）");
-        } else {
-          logMessage("※チート：敵の攻撃無効化 OFF");
-        }
-      });
-    }
-
-    // === タッチ操作の実装 ===
-    function handleMoveTouch(clientX, clientY) {
-      const rect = touchMoveArea.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      let dx = clientX - cx;
-      let dy = clientY - cy;
-      const maxR = rect.width / 2;
-      const len = Math.hypot(dx, dy);
-
-      if (len > 0) {
-        const n = Math.min(len, maxR);
-        dx = dx / len * n;
-        dy = dy / len * n;
-        touchMoveDx = dx / maxR;
-        touchMoveDy = dy / maxR;
-      } else {
-        touchMoveDx = 0;
-        touchMoveDy = 0;
-      }
-
-      touchMoveStick.style.left = `${50 + touchMoveDx * 40}%`;
-      touchMoveStick.style.top = `${50 + touchMoveDy * 40}%`;
-    }
-
-    function resetMoveTouch() {
-      touchMoveActive = false;
-      touchMoveDx = 0;
-      touchMoveDy = 0;
-      touchMoveStick.style.left = "50%";
-      touchMoveStick.style.top = "50%";
-    }
-
-    if (touchMoveArea) {
-      const start = (e) => {
-        e.preventDefault();
-        touchMoveActive = true;
-        const t = e.touches ? e.touches[0] : e;
-        handleMoveTouch(t.clientX, t.clientY);
-      };
-      const move = (e) => {
-        if (!touchMoveActive) return;
-        e.preventDefault();
-        const t = e.touches ? e.touches[0] : e;
-        handleMoveTouch(t.clientX, t.clientY);
-      };
-      const end = (e) => {
-        e.preventDefault();
-        resetMoveTouch();
-      };
-
-      touchMoveArea.addEventListener("pointerdown", start);
-      touchMoveArea.addEventListener("pointermove", move);
-      touchMoveArea.addEventListener("pointerup", end);
-      touchMoveArea.addEventListener("pointercancel", end);
-      touchMoveArea.addEventListener("pointerleave", (e) => {
-        if (touchMoveActive) end(e);
-      });
-
-      touchMoveArea.addEventListener("touchstart", start, { passive: false });
-      touchMoveArea.addEventListener("touchmove", move, { passive: false });
-      touchMoveArea.addEventListener("touchend", end);
-      touchMoveArea.addEventListener("touchcancel", end);
-    }
-
-    function bindTouchButton(btn, onDown, onUp) {
-      if (!btn) return;
-      const down = (e) => {
-        e.preventDefault();
-        onDown();
-      };
-      const up = (e) => {
-        e.preventDefault();
-        if (onUp) onUp();
-      };
-      btn.addEventListener("pointerdown", down);
-      btn.addEventListener("pointerup", up);
-      btn.addEventListener("pointercancel", up);
-      btn.addEventListener("touchstart", down, { passive: false });
-      btn.addEventListener("touchend", up);
-      btn.addEventListener("touchcancel", up);
-    }
-
-    bindTouchButton(btnShot,
-      () => { touchShot = true; },
-      () => { touchShot = false; }
-    );
-
-    bindTouchButton(btnSlow,
-      () => { touchSlow = true; },
-      () => { touchSlow = false; }
-    );
-
-    bindTouchButton(btnBomb,
-      () => {
-        if (!dialogueActive && (phase === PHASE_STAGE || phase === PHASE_BOSS)) {
-          useBomb();
-        }
-      },
-      null
-    );
-
-    clearLog();
-    logMessage("タイトル：ぎんなん幻想弾幕譚 - Kojima Bullet Hell");
-    logMessage("PCはキーボード、スマホは下のパッド＋ボタン＋画面タップで操作。");
-  </script>
-</body>
-</html>
-      padding: 8px 10px;
-      border-radius: 8px;
-      background: rgba(15,23,42,0.9);
-      border: 1px solid rgba(148,163,184,0.6);
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-    #statusPanel #statusLine1,
-    #statusPanel #statusLine2 {
-      margin-bottom: 4px;
-    }
-    #startButton {
-      margin: 8px 0;
-      padding: 8px 16px;
-      border-radius: 999px;
-      border: none;
-      background: #fbbf24;
-      color: #111827;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 0 12px rgba(251,191,36,0.35);
-    }
-    #startButton:hover { filter: brightness(1.05); }
-    #startButton:active {
-      transform: translateY(1px);
-      box-shadow: 0 0 6px rgba(251,191,36,0.25);
-    }
-    #help {
-      font-size: 12px;
-      color: #9ca3af;
-      margin-bottom: 8px;
-      line-height: 1.5;
-    }
-    #log {
-      background: #020617;
-      border-radius: 8px;
-      padding: 8px;
-      border: 1px solid #111827;
-      height: 280px;
-      overflow-y: auto;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-    #log p {
-      margin: 0 0 4px;
-      white-space: pre-wrap;
-    }
-
-    /* === スマホ用タッチ操作UI === */
-    #touchControls {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      pointer-events: none;
-      padding: 8px 10px 12px;
-      display: none;
-      z-index: 20;
-    }
-    #touchControlsInner {
-      max-width: 960px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-    }
-    #touchMoveArea {
-      width: 45vw;
-      max-width: 220px;
-      height: 45vw;
-      max-height: 220px;
-      border-radius: 50%;
-      border: 2px solid rgba(148,163,184,0.7);
-      background: radial-gradient(circle, rgba(15,23,42,0.9), rgba(15,23,42,0.6));
-      position: relative;
-      pointer-events: auto;
-      touch-action: none;
-    }
-    #touchMoveStick {
-      width: 40%;
-      height: 40%;
-      border-radius: 50%;
-      background: rgba(59,130,246,0.9);
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.9;
-    }
-    #touchButtons {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      pointer-events: auto;
-      touch-action: none;
-    }
-    .touchBtn {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      border: 2px solid rgba(248,250,252,0.8);
-      background: rgba(15,23,42,0.88);
-      color: #f9fafb;
-      font-size: 12px;
-      font-weight: 600;
-      text-align: center;
-      line-height: 1.1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 8px rgba(15,23,42,0.7);
-    }
-    .touchBtn span { pointer-events:none; }
-    .touchBtn:active { background: rgba(37,99,235,0.9); }
-    .touchBtn-bomb {
-      border-color: rgba(248,113,113,0.9);
-      color: #fecaca;
-    }
-    .touchBtn-slow {
-      border-color: rgba(52,211,153,0.9);
-      color: #bbf7d0;
-    }
-
-    @media (max-width: 900px) {
-      .root { padding: 8px; }
-      #gamePanel {
-        flex-direction: column;
-        padding: 12px;
-        gap: 12px;
-      }
-      #game {
-        width: 100%;
-        height: auto;
-        max-width: 480px;
-        margin: 0 auto;
-      }
-      #ui { max-width:none; }
-      #touchControls { display:block; }
-    }
-  </style>
-</head>
-<body>
-  <div class="root">
-    <div id="gamePanel">
-      <canvas id="game" width="480" height="640"></canvas>
-      <div id="ui">
-        <div id="titleBox">
-          <div class="mainTitle">ぎんな弾幕譚</div>
-          <div class="subTitle">Ginnan Danmaku-tan</div>
-        </div>
-        <div id="statusPanel">
-          <div id="statusLine1"></div>
-          <div id="statusLine2"></div>
-        </div>
-        <div>操作説明</div>
-        <div id="help">
-          PC：Z＝ショット / X＝ボム / Shift＝低速 / ←→↑↓ or WASD＝移動<br>
-          スマホ：画面下の丸いパッドで移動、右のボタンでショット・ボム・低速<br>
-          会話は「画面タップ」で次へ進みます
-        </div>
-
-        <label style="display:block; margin:8px 0; font-size:13px; color:#fbbf24; user-select:none;">
-          <input type="checkbox" id="cheatInvincible"> ■ 敵の攻撃無効化（INF / チート）
-        </label>
-
-        <button id="startButton">ゲームスタート / リトライ</button>
-        <div style="margin-top:8px; margin-bottom:4px;">ログ（システムメモ用）</div>
-        <div id="log"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- スマホ用タッチ操作UI -->
-  <div id="touchControls">
-    <div id="touchControlsInner">
-      <div id="touchMoveArea">
-        <div id="touchMoveStick"></div>
-      </div>
-      <div id="touchButtons">
-        <button class="touchBtn" id="btnShot"><span>SHOT</span></button>
-        <button class="touchBtn touchBtn-bomb" id="btnBomb"><span>BOMB</span></button>
-        <button class="touchBtn touchBtn-slow" id="btnSlow"><span>SLOW</span></button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
-    const statusLine1 = document.getElementById("statusLine1");
-    const statusLine2 = document.getElementById("statusLine2");
-    const startButton = document.getElementById("startButton");
-    const logBox = document.getElementById("log");
-    const cheatCheckbox = document.getElementById("cheatInvincible");
-
-    // タッチUI要素
-    const touchMoveArea = document.getElementById("touchMoveArea");
-    const touchMoveStick = document.getElementById("touchMoveStick");
-    const btnShot = document.getElementById("btnShot");
-    const btnBomb = document.getElementById("btnBomb");
-    const btnSlow = document.getElementById("btnSlow");
-
-    let touchMoveActive = false;
-    let touchMoveDx = 0;
-    let touchMoveDy = 0;
-    let touchShot = false;
-    let touchSlow = false;
-
-    let cheatInvincible = false;
-
-    // ステージ背景
-    const stageBg = new Image();
-    stageBg.src = "stage_bg.png";
-    let stageBgLoaded = false;
-    stageBg.addEventListener("load", () => { stageBgLoaded = true; });
-
-    const bgm = new Audio("bgm.wav");
-    bgm.loop = true;
-
-    const enemyHitSe = new Audio("敵が攻撃食らってる音.wav");
-    enemyHitSe.volume = 0.9;
-
-    const enemySheet = new Image();
-    enemySheet.src = "enemy/enemy_bullet_sheet.png";
-    const ENEMY_FRAME_W = 220;
-    const ENEMY_FRAME_H = 175;
-    const ENEMY_FRAME_COUNT = 30;
-    const ENEMY_FRAME_DURATION = 0.06;
-    let enemyAnimTime = 0;
-
-    const bossSheet = new Image();
-    bossSheet.src = "boss/boss_sheet.png";
-    const BOSS_FRAME_W = 640;
-    const BOSS_FRAME_H = 360;
-    const BOSS_FRAME_COUNT = 14;
-    const BOSS_FRAME_DURATION = 0.08;
-    let bossAnimTime = 0;
-
-    const PHASE_TITLE = "TITLE";
-    const PHASE_STAGE = "STAGE";
-    const PHASE_BOSS_TALK = "BOSS_TALK";
-    const PHASE_BOSS = "BOSS";
-    const PHASE_CLEAR = "CLEAR";
-    const PHASE_GAMEOVER = "GAMEOVER";
-
-    let phase = PHASE_TITLE;
-    let phaseTime = 0;
-    let timeSec = 0;
-
-    const player = {
-      x: canvas.width / 2,
-      y: canvas.height - 60,
-      radius: 5,
-      grazeRadius: 18,
-      speed: 260,
-      slowSpeed: 130,
-      invincibleTime: 0
-    };
-
-    let life = 3;
-    let bombs = 3;
-    let power = 1;
-    let graze = 0;
-    let score = 0;
-
-    let bullets = [];
-    let particles = [];
-
-    let shotCooldown = 0;
-    const shotInterval = 0.12;
-
-    let stageTimer = 0;
-    let stageStarted = false;
-
-    const boss = {
-      x: canvas.width / 2,
-      y: 140,
-      radius: 26,
-      hp: 3000,
-      maxHp: 3000,
-      phase: 1,
-      timer: 0,
-      ringOffset: 0
-    };
-
-    let keys = {};
-
-    // 会話関連（吹き出し用）
-    let dialogueActive = false;
-    let dialogueLines = [];
-    let dialogueIndex = 0;
-    let dialogueOnComplete = null;
-    let currentDialogueText = "";
-
-    function clearLog() {
-      logBox.innerHTML = "";
-    }
-    function logMessage(text) {
-      const p = document.createElement("p");
-      p.textContent = text;
-      logBox.appendChild(p);
-      logBox.scrollTop = logBox.scrollHeight;
-    }
-
-    function startDialogue(lines, onComplete) {
-      dialogueLines = lines.slice();
-      dialogueIndex = 0;
-      dialogueOnComplete = onComplete || null;
-      dialogueActive = true;
-      currentDialogueText = "";
-      clearLog();          // ログも一応クリア
-      showNextDialogue();  // 1行目表示
-    }
-
-    function showNextDialogue() {
-      if (dialogueIndex < dialogueLines.length) {
-        currentDialogueText = dialogueLines[dialogueIndex];
-        dialogueIndex++;
-      } else {
-        dialogueActive = false;
-        currentDialogueText = "";
-        if (dialogueOnComplete) {
-          const cb = dialogueOnComplete;
-          dialogueOnComplete = null;
-          cb();
-        }
-      }
-    }
-
-    class Bullet {
-      constructor(x, y, angle, speed, owner, radius) {
-        this.x = x;
-        this.y = y;
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
-        this.owner = owner;
-        this.r = radius || 5;
-        this.alive = true;
-        this.grazed = false;
-        this.animOffset = Math.random() * ENEMY_FRAME_COUNT;
-      }
-      update(dt) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-        if (this.x < -40 || this.x > canvas.width + 40 ||
-            this.y < -40 || this.y > canvas.height + 40) {
-          this.alive = false;
-        }
-      }
-      draw(ctx) {
-        if (this.owner === "enemy" && enemySheet.complete && enemySheet.naturalWidth > 0) {
-          const size = this.r * 2.4;
-          const localTime = enemyAnimTime + this.animOffset * ENEMY_FRAME_DURATION;
-          const frameIndex = Math.floor(localTime / ENEMY_FRAME_DURATION) % ENEMY_FRAME_COUNT;
-          const sx = frameIndex * ENEMY_FRAME_W;
-          const sy = 0;
-          ctx.drawImage(
-            enemySheet,
-            sx, sy, ENEMY_FRAME_W, ENEMY_FRAME_H,
-            this.x - size / 2,
-            this.y - size / 2,
-            size,
-            size
-          );
-        } else {
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-          ctx.fillStyle = (this.owner === "player") ? "#a5f3fc" : "#facc15";
-          ctx.fill();
-        }
-      }
-    }
-
-    class Particle {
-      constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.vx = (Math.random() - 0.5) * 80;
-        this.vy = (Math.random() - 0.5) * 80;
-        this.life = 0.4;
-      }
-      update(dt) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-        this.life -= dt;
-      }
-      draw(ctx) {
-        if (this.life <= 0) return;
-        ctx.globalAlpha = Math.max(this.life / 0.4, 0);
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = "#facc15";
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    function resetPlayer() {
-      player.invincibleTime = 1.5;
-    }
-
-    function startGame() {
-      phase = PHASE_STAGE;
-      phaseTime = 0;
-      timeSec = 0;
-      life = 3;
-      bombs = 3;
-      power = 1;
-      graze = 0;
-      score = 0;
-      bullets = [];
-      particles = [];
-      shotCooldown = 0;
-      stageTimer = 0;
-      stageStarted = false;
-      player.x = canvas.width / 2;
-      player.y = canvas.height - 60;
-      player.invincibleTime = 0;
-
-      try {
-        bgm.currentTime = 0;
-        bgm.play();
-      } catch (e) {
-        console.warn("BGM play failed:", e);
-      }
-
-      startStageDialogue();
-    }
-
-    function startStageDialogue() {
-      startDialogue([
-        "小島：バイト先、また一つ増えちまったな…。",
-        "プレイヤー：今日は潰させない。ぎんなんの亡霊伝説、ここで止めてやる！",
-        "小島：発酵は止まんねぇからよ…。でも、片付けだけは最後までやるさ。"
-      ], () => {
-        stageStarted = true;
-        clearLog();
-        logMessage("ステージ開始：夜の商店街を、ぎんなん臭とともに進んでいく…。");
-      });
-    }
-
-    function startBossTalk() {
-      phase = PHASE_BOSS_TALK;
-      phaseTime = 0;
-      boss.hp = boss.maxHp;
-      boss.phase = 1;
-      boss.timer = 0;
-      boss.ringOffset = 0;
-      bullets = [];
-      boss.x = canvas.width / 2;
-      boss.y = 140;
-
-      startDialogue([
-        "小島：ぎんなんの処理、まだ終わってねぇんだよ…（発酵は止まんねぇからよ）。",
-        "プレイヤー：ここまで何軒も潰しておいて、まだ続けるつもりか！",
-        "小島：終わった文化祭みたいな空気だな…。じゃあ、締めの片付け、始めようか。"
-      ], () => {
-        startBossBattle();
-      });
-    }
-
-    function startBossBattle() {
-      clearLog();
-      logMessage("ボス戦開始：ぎんなんの亡霊・小島が立ちはだかる！");
-      phase = PHASE_BOSS;
-      phaseTime = 0;
-      boss.timer = 0;
-      boss.phase = 1;
-      boss.ringOffset = 0;
-      boss.x = canvas.width / 2;
-      boss.y = 140;
-    }
-
-    function gameOver() {
-      phase = PHASE_GAMEOVER;
-      clearLog();
-      logMessage("GAME OVER：この店も、発酵の歴史に刻まれてしまった…。");
-      logMessage("Spaceキーかボタン、または画面タップでリトライできます。");
-    }
-
-    function gameClear() {
-      phase = PHASE_CLEAR;
-      clearLog();
-      logMessage("CLEAR：ぎんなんの亡霊は、今日も最後まで片付けをして去っていった。");
-      logMessage("店はギリギリ生き残った。たぶん。");
-      logMessage("Spaceキーかボタン、または画面タップで再挑戦できます。");
-    }
-
-    function useBomb() {
-      if (bombs <= 0) return;
-      bombs--;
-      bullets = bullets.filter(b => b.owner === "player");
-      for (let i = 0; i < 40; i++) {
-        particles.push(new Particle(player.x, player.y));
-      }
-      logMessage("ボム：一気に大鍋洗浄！弾を全部洗い流した。");
-      if (phase === PHASE_BOSS) {
-        boss.hp -= 150;
-        if (boss.hp < 0) boss.hp = 0;
-      }
-    }
-
-    function shootPlayer() {
-      const speed = 480;
-      const baseAngle = -Math.PI / 2;
-      const count = Math.max(1, Math.min(power, 5));
-      const spread = (Math.PI / 180) * 8;
-      const center = (count - 1) / 2;
-      for (let i = 0; i < count; i++) {
-        const offset = (i - center) * spread;
-        const angle = baseAngle + offset;
-        bullets.push(new Bullet(player.x, player.y - 8, angle, speed, "player", 4));
-      }
-    }
-
-    function damagePlayer() {
-      if (player.invincibleTime > 0) return;
-      life--;
-      player.invincibleTime = 2.0;
-      bullets = bullets.filter(b => b.owner === "player");
-      logMessage("被弾：スープが一気に沸き立った…（LIFE -1）。");
-      if (life < 0) {
-        gameOver();
-      } else {
-        resetPlayer();
-      }
-    }
-
+    // ==== ステータスバー ====
     function updateStatusBar() {
-      const lifeStr = life >= 0 ? "♥".repeat(life) : "";
+      const lifeStr = life >= 0 ? "♥".repeat(Math.max(0, life)) : "";
       statusLine1.textContent =
         "LIFE " + lifeStr +
         "   BOMB " + bombs +
         "  PWR " + power +
         "  Graze " + graze +
         "  Score " + score;
+
       let phaseLabel = "";
       if (phase === PHASE_TITLE) phaseLabel = "TITLE";
       else if (phase === PHASE_STAGE) phaseLabel = "STAGE 1";
@@ -1837,298 +809,270 @@
       else if (phase === PHASE_BOSS) phaseLabel = "BOSS";
       else if (phase === PHASE_CLEAR) phaseLabel = "CLEAR";
       else if (phase === PHASE_GAMEOVER) phaseLabel = "GAME OVER";
+
       statusLine2.textContent =
         "Phase " + phaseLabel + "   Time " + timeSec.toFixed(1) + "s";
     }
 
-    function updateStage(dt) {
-      if (!stageStarted) return;
-      stageTimer += dt;
+    // ==== 入力 ====
+    window.addEventListener("keydown", (e) => {
+      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+        e.preventDefault();
+      }
+      keys[e.code] = true;
 
-      const interval = 0.35;
-      if (stageTimer >= interval) {
-        stageTimer -= interval;
-        const count = 5;
-        for (let i = 0; i < count; i++) {
-          const x = 40 + Math.random() * (canvas.width - 80);
-          const angle = Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 18);
-          const speed = 150 + Math.random() * 80;
-          bullets.push(new Bullet(x, -20, angle, speed, "enemy", 6));
+      if (e.code === "Space") {
+        if (dialogueActive) {
+          showNextDialogue();
+        } else if (phase === PHASE_TITLE ||
+                   phase === PHASE_CLEAR ||
+                   phase === PHASE_GAMEOVER) {
+          startGame();
         }
       }
-      if (phaseTime > 35) {
-        startBossTalk();
-      }
-    }
-
-    function bossPatternRing(dt) {
-      const interval = 0.25;
-      if (boss.timer >= interval) {
-        boss.timer -= interval;
-        const count = 24;
-        const speed = 140;
-        for (let i = 0; i < count; i++) {
-          const angle = (Math.PI * 2 * i) / count + boss.ringOffset;
-          bullets.push(new Bullet(boss.x, boss.y, angle, speed, "enemy", 5));
-        }
-        boss.ringOffset += 0.2;
-      }
-    }
-
-    function bossPatternSpiralAimed(dt) {
-      const spiralInterval = 0.05;
-      const aimedInterval = 0.7;
-
-      if (boss.timer >= spiralInterval) {
-        boss.timer -= spiralInterval;
-        const angle = phaseTime * 4.0;
-        const speed = 160;
-        bullets.push(new Bullet(boss.x, boss.y, angle, speed, "enemy", 4));
-      }
-
-      const prevBucket = Math.floor((phaseTime - dt) / aimedInterval);
-      const nowBucket = Math.floor(phaseTime / aimedInterval);
-      if (nowBucket !== prevBucket) {
-        const baseAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
-        const spread = (Math.PI / 180) * 15;
-        const speed = 220;
-        for (let i = -2; i <= 2; i++) {
-          const angle = baseAngle + spread * i;
-          bullets.push(new Bullet(boss.x, boss.y, angle, speed, "enemy", 6));
+      if (e.code === "KeyX") {
+        if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
+          useBomb();
         }
       }
-    }
+    });
+    window.addEventListener("keyup", (e) => {
+      keys[e.code] = false;
+    });
 
-    function bossPatternRain(dt) {
-      const interval = 0.12;
-      if (boss.timer >= interval) {
-        boss.timer -= interval;
-        const speedMin = 160;
-        const speedMax = 260;
-        for (let i = 0; i < 6; i++) {
-          const x = 40 + Math.random() * (canvas.width - 80);
-          const angle = Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 12);
-          const speed = speedMin + Math.random() * (speedMax - speedMin);
-          bullets.push(new Bullet(x, -20, angle, speed, "enemy", 6));
-        }
+    // マウス / タップで会話送り・リトライ
+    canvas.addEventListener("mousedown", () => {
+      if (dialogueActive) {
+        showNextDialogue();
+      } else if (phase === PHASE_TITLE ||
+                 phase === PHASE_CLEAR ||
+                 phase === PHASE_GAMEOVER) {
+        startGame();
       }
-    }
+    });
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      if (dialogueActive) {
+        showNextDialogue();
+      } else if (phase === PHASE_TITLE ||
+                 phase === PHASE_CLEAR ||
+                 phase === PHASE_GAMEOVER) {
+        startGame();
+      }
+    }, {passive:false});
 
-    function updateBoss(dt) {
-      boss.timer += dt;
-      const centerX = canvas.width / 2;
-      const amplitude = 150;
-      const speed = 0.6;
-      boss.x = centerX + Math.sin(phaseTime * speed) * amplitude;
+    // チート無敵
+    cheatCheckbox.addEventListener("change", () => {
+      cheatInvincible = cheatCheckbox.checked;
+      logMessage(cheatInvincible
+        ? "チートON：敵弾無効化（INF）。"
+        : "チートOFF：通常モードに戻りました。");
+    });
 
-      if (boss.phase === 1) {
-        bossPatternRing(dt);
-        if (boss.hp < boss.maxHp * 0.65) {
-          boss.phase = 2;
-          boss.timer = 0;
-          logMessage("小島：まだまだだな…。じゃあ、狙い撃ちでいくか。");
-        }
-      } else if (boss.phase === 2) {
-        bossPatternSpiralAimed(dt);
-        if (boss.hp < boss.maxHp * 0.3) {
-          boss.phase = 3;
-          boss.timer = 0;
-          logMessage("小島：終盤の片付けタイムだ…。発酵、フルパワー。");
-        }
-      } else if (boss.phase === 3) {
-        bossPatternRain(dt);
-        if (boss.hp <= 0) {
-          gameClear();
-        }
+    startButton.addEventListener("click", () => {
+      startGame();
+    });
+
+    // ==== タッチ操作 ====
+    let activeTouchId = null;
+    function handleMoveTouch(ev) {
+      const rect = touchMoveArea.getBoundingClientRect();
+      for (const t of ev.changedTouches) {
+        if (activeTouchId !== null && t.identifier !== activeTouchId) continue;
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = t.clientX - cx;
+        const dy = t.clientY - cy;
+        const maxR = rect.width / 2;
+        let nx = dx / maxR;
+        let ny = dy / maxR;
+        const len = Math.hypot(nx, ny);
+        if (len > 1) { nx /= len; ny /= len; }
+        touchMoveDx = nx;
+        touchMoveDy = ny;
+        touchMoveStick.style.left = (50 + nx * 40) + "%";
+        touchMoveStick.style.top = (50 + ny * 40) + "%";
       }
     }
 
-    function updateBullets(dt) {
-      for (let b of bullets) {
-        b.update(dt);
-        if (!b.alive) continue;
-
-        if (b.owner === "enemy" &&
-            (phase === PHASE_STAGE || phase === PHASE_BOSS) &&
-            !dialogueActive) {
-          const dx = b.x - player.x;
-          const dy = b.y - player.y;
-          const dist2 = dx * dx + dy * dy;
-
-          const hitR = (player.radius + b.r * 0.7);
-          const grazeR = (player.grazeRadius + b.r);
-
-          if (player.invincibleTime <= 0 && !cheatInvincible && dist2 < hitR * hitR) {
-            b.alive = false;
-            damagePlayer();
-            continue;
-          } else if (!b.grazed && dist2 < grazeR * grazeR) {
-            b.grazed = true;
-            graze++;
-            score += 5;
-          }
+    if (touchMoveArea) {
+      touchMoveArea.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (activeTouchId === null && e.changedTouches.length > 0) {
+          const t = e.changedTouches[0];
+          activeTouchId = t.identifier;
+          touchMoveActive = true;
+          handleMoveTouch(e);
         }
-
-        if (b.owner === "player" && phase === PHASE_BOSS && boss.hp > 0) {
-          const dx = b.x - boss.x;
-          const dy = b.y - boss.y;
-          const dist2 = dx * dx + dy * dy;
-          const r = boss.radius + b.r;
-          if (dist2 < r * r) {
-            b.alive = false;
-            boss.hp -= 10;
-            score += 10;
-            try {
-              enemyHitSe.currentTime = 0;
-              enemyHitSe.play();
-            } catch (e) {
-              console.warn("enemy hit se play failed", e);
-            }
-            for (let i = 0; i < 3; i++) {
-              particles.push(new Particle(b.x, b.y));
-            }
+      }, {passive:false});
+      touchMoveArea.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        if (!touchMoveActive) return;
+        handleMoveTouch(e);
+      }, {passive:false});
+      function endMove(e){
+        for (const t of e.changedTouches) {
+          if (t.identifier === activeTouchId) {
+            activeTouchId = null;
+            touchMoveActive = false;
+            touchMoveDx = 0;
+            touchMoveDy = 0;
+            touchMoveStick.style.left = "50%";
+            touchMoveStick.style.top = "50%";
           }
         }
       }
-      bullets = bullets.filter(b => b.alive);
+      touchMoveArea.addEventListener("touchend", (e)=>{ e.preventDefault(); endMove(e); }, {passive:false});
+      touchMoveArea.addEventListener("touchcancel", (e)=>{ e.preventDefault(); endMove(e); }, {passive:false});
     }
 
-    function updateParticles(dt) {
-      for (let p of particles) {
-        p.update(dt);
-      }
-      particles = particles.filter(p => p.life > 0);
+    if (btnShot) {
+      btnShot.addEventListener("touchstart", (e)=>{ e.preventDefault(); touchShot = true; }, {passive:false});
+      btnShot.addEventListener("touchend", (e)=>{ e.preventDefault(); touchShot = false; }, {passive:false});
+      btnShot.addEventListener("touchcancel", (e)=>{ e.preventDefault(); touchShot = false; }, {passive:false});
     }
-
-    function updatePlayer(dt) {
-      if (dialogueActive) return;
-      if (phase !== PHASE_STAGE && phase !== PHASE_BOSS) return;
-
-      let mx = 0;
-      let my = 0;
-
-      if (touchMoveActive) {
-        mx = touchMoveDx;
-        my = touchMoveDy;
-      } else {
-        if (keys["ArrowLeft"] || keys["KeyA"]) mx -= 1;
-        if (keys["ArrowRight"] || keys["KeyD"]) mx += 1;
-        if (keys["ArrowUp"] || keys["KeyW"]) my -= 1;
-        if (keys["ArrowDown"] || keys["KeyS"]) my += 1;
-        if (mx !== 0 || my !== 0) {
-          const len = Math.hypot(mx, my);
-          mx /= len;
-          my /= len;
+    if (btnBomb) {
+      btnBomb.addEventListener("touchstart", (e)=>{
+        e.preventDefault();
+        if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
+          useBomb();
         }
+      }, {passive:false});
+    }
+    if (btnSlow) {
+      btnSlow.addEventListener("touchstart", (e)=>{ e.preventDefault(); touchSlow = true; }, {passive:false});
+      btnSlow.addEventListener("touchend", (e)=>{ e.preventDefault(); touchSlow = false; }, {passive:false});
+      btnSlow.addEventListener("touchcancel", (e)=>{ e.preventDefault(); touchSlow = false; }, {passive:false});
+    }
+
+    // ==== メインループ ====
+    let lastTime = 0;
+    function loop(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const dt = Math.min((timestamp - lastTime) / 1000, 0.033);
+      lastTime = timestamp;
+
+      phaseTime += dt;
+      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
+        timeSec += dt;
       }
 
-      const isSlow = (keys["ShiftLeft"] || keys["ShiftRight"] || touchSlow);
-      const spd = isSlow ? player.slowSpeed : player.speed;
+      enemyAnimTime += dt;
+      bossAnimTime += dt;
 
-      player.x += mx * spd * dt;
-      player.y += my * spd * dt;
+      // 更新
+      update(dt);
+      // 描画
+      draw();
 
-      if (player.x < 20) player.x = 20;
-      if (player.x > canvas.width - 20) player.x = canvas.width - 20;
-      if (player.y < 40) player.y = 40;
-      if (player.y > canvas.height - 20) player.y = canvas.height - 20;
+      requestAnimationFrame(loop);
+    }
+
+    function update(dt) {
+      // プレイヤー移動
+      let moveX = 0;
+      let moveY = 0;
+      if (keys["ArrowLeft"] || keys["KeyA"]) moveX -= 1;
+      if (keys["ArrowRight"] || keys["KeyD"]) moveX += 1;
+      if (keys["ArrowUp"] || keys["KeyW"]) moveY -= 1;
+      if (keys["ArrowDown"] || keys["KeyS"]) moveY += 1;
+
+      moveX += touchMoveDx;
+      moveY += touchMoveDy;
+
+      const len = Math.hypot(moveX, moveY);
+      if (len > 0) {
+        moveX /= len;
+        moveY /= len;
+      }
+
+      const isSlow = keys["ShiftLeft"] || keys["ShiftRight"] || touchSlow;
+      const speed = isSlow ? player.slowSpeed : player.speed;
+
+      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
+        player.x += moveX * speed * dt;
+        player.y += moveY * speed * dt;
+        player.x = Math.max(20, Math.min(canvas.width - 20, player.x));
+        player.y = Math.max(40, Math.min(canvas.height - 20, player.y));
+      }
 
       if (player.invincibleTime > 0) {
         player.invincibleTime -= dt;
         if (player.invincibleTime < 0) player.invincibleTime = 0;
       }
 
-      shotCooldown -= dt;
-      if (shotCooldown < 0) shotCooldown = 0;
-
-      const shooting = (keys["KeyZ"] || touchShot);
+      // ショット
+      if (shotCooldown > 0) shotCooldown -= dt;
+      const wantShot = keys["KeyZ"] || touchShot;
       if ((phase === PHASE_STAGE || phase === PHASE_BOSS) &&
-          shooting && shotCooldown <= 0) {
+          wantShot && shotCooldown <= 0) {
         shootPlayer();
         shotCooldown = shotInterval;
       }
-    }
 
-    function update(dt) {
-      enemyAnimTime += dt;
-      bossAnimTime += dt;
-
-      if (phase === PHASE_STAGE || phase === PHASE_BOSS || phase === PHASE_BOSS_TALK) {
-        phaseTime += dt;
-        timeSec += dt;
-      }
-
+      // フェーズ別更新
       if (phase === PHASE_STAGE) {
         updateStage(dt);
       } else if (phase === PHASE_BOSS) {
         updateBoss(dt);
       }
 
-      updatePlayer(dt);
-      updateBullets(dt);
-      updateParticles(dt);
+      // 弾・パーティクル更新
+      for (const b of bullets) b.update(dt);
+      for (const p of particles) p.update(dt);
+      particles = particles.filter(p => p.life > 0);
+
+      if (phase === PHASE_STAGE || phase === PHASE_BOSS) {
+        checkCollisions(dt);
+      }
+
       updateStatusBar();
     }
 
     function drawBackground() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       if (stageBgLoaded) {
-        const iw = stageBg.width;
-        const ih = stageBg.height;
-        const cw = canvas.width;
-        const ch = canvas.height;
-
-        const scale = Math.max(cw / iw, ch / ih);
-        const dw = iw * scale;
-        const dh = ih * scale;
-
-        const dx = (cw - dw) / 2;
-        const dy = (ch - dh) / 2;
-
-        ctx.drawImage(stageBg, dx, dy, dw, dh);
+        const patH = canvas.height;
+        const offset = (phaseTime * 40) % patH;
+        ctx.drawImage(stageBg, 0, -offset, canvas.width, patH);
+        ctx.drawImage(stageBg, 0, -offset + patH, canvas.width, patH);
       } else {
-        const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        g.addColorStop(0, "#020617");
-        g.addColorStop(0.4, "#0f172a");
-        g.addColorStop(1, "#020617");
-        ctx.fillStyle = g;
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, "#020617");
+        grad.addColorStop(1, "#0f172a");
+        ctx.fillStyle = grad;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-
-      ctx.save();
-      ctx.strokeStyle = "rgba(15,23,42,0.9)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(10.5, 10.5, canvas.width - 21, canvas.height - 21);
-      ctx.restore();
     }
 
     function drawPlayer() {
       ctx.save();
-      ctx.translate(player.x, player.y);
-      if (player.invincibleTime > 0 && Math.floor(player.invincibleTime * 10) % 2 === 0) {
-        ctx.globalAlpha = 0.4;
+      if (player.invincibleTime > 0) {
+        const t = player.invincibleTime * 10;
+        if (Math.floor(t) % 2 === 0) {
+          ctx.globalAlpha = 0.3;
+        }
       }
       ctx.beginPath();
-      ctx.arc(0, 0, 6, 0, Math.PI * 2);
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
       ctx.fillStyle = "#38bdf8";
       ctx.fill();
-      ctx.beginPath();
-      ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
-      ctx.fillStyle = "#0f172a";
-      ctx.fill();
       ctx.restore();
+
+      // 当たり判定の中心ドット
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = "#f9fafb";
+      ctx.fill();
     }
 
     function drawBoss() {
-      if (phase !== PHASE_BOSS && phase !== PHASE_BOSS_TALK && phase !== PHASE_CLEAR) return;
-
+      if (phase !== PHASE_BOSS && phase !== PHASE_BOSS_TALK) return;
+      const size = 160;
       if (bossSheet.complete && bossSheet.naturalWidth > 0) {
-        const frameIndex = Math.floor(bossAnimTime / BOSS_FRAME_DURATION) % BOSS_FRAME_COUNT;
+        const frameIndex =
+          Math.floor(bossAnimTime / BOSS_FRAME_DURATION) % BOSS_FRAME_COUNT;
         const sx = frameIndex * BOSS_FRAME_W;
         const sy = 0;
-        const size = boss.radius * 3.0;
-
         ctx.drawImage(
           bossSheet,
           sx, sy, BOSS_FRAME_W, BOSS_FRAME_H,
@@ -2138,314 +1082,136 @@
           size
         );
       } else {
-        ctx.save();
-        ctx.translate(boss.x, boss.y);
-        const grd = ctx.createRadialGradient(0, 0, 4, 0, 0, boss.radius);
-        grd.addColorStop(0, "#facc15");
-        grd.addColorStop(1, "#92400e");
-        ctx.fillStyle = grd;
         ctx.beginPath();
-        ctx.arc(0, 0, boss.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      if (phase === PHASE_BOSS) {
-        const barWidth = 160;
-        const barHeight = 6;
-        const ratio = Math.max(0, boss.hp) / boss.maxHp;
-        ctx.save();
-        ctx.translate(boss.x - barWidth / 2, boss.y - boss.radius - 28);
-        ctx.fillStyle = "rgba(15,23,42,0.8)";
-        ctx.fillRect(0, 0, barWidth, barHeight);
+        ctx.arc(boss.x, boss.y, boss.radius, 0, Math.PI * 2);
         ctx.fillStyle = "#f97316";
-        ctx.fillRect(0, 0, barWidth * ratio, barHeight);
-        ctx.restore();
+        ctx.fill();
       }
+
+      // HPバー
+      const barWidth = 260;
+      const barHeight = 10;
+      const x = (canvas.width - barWidth) / 2;
+      const y = 20;
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(x, y, barWidth, barHeight);
+      const rate = Math.max(0, boss.hp / boss.maxHp);
+      ctx.fillStyle = "#f97316";
+      ctx.fillRect(x, y, barWidth * rate, barHeight);
+      ctx.strokeStyle = "#fbbf24";
+      ctx.strokeRect(x, y, barWidth, barHeight);
     }
 
-    function drawBullets() {
-      for (let b of bullets) {
-        b.draw(ctx);
+    function drawDialogueBox() {
+      if (!dialogueActive) return;
+      const pad = 12;
+      const w = canvas.width - pad * 2;
+      const h = 120;
+      const x = pad;
+      const y = canvas.height - h - pad;
+
+      ctx.fillStyle = "rgba(15,23,42,0.92)";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "rgba(148,163,184,0.9)";
+      ctx.strokeRect(x, y, w, h);
+
+      ctx.fillStyle = "#e5e7eb";
+      ctx.font = "14px system-ui";
+
+      let name = currentSpeaker || "";
+      if (name) {
+        ctx.fillText(name, x + 10, y + 22);
       }
+
+      ctx.font = "13px system-ui";
+      const text = currentDialogueText || "";
+      const lines = wrapText(text, w - 20, ctx);
+      let ty = y + 42;
+      for (const ln of lines) {
+        ctx.fillText(ln, x + 10, ty);
+        ty += 18;
+      }
+
+      ctx.font = "11px system-ui";
+      ctx.fillStyle = "#9ca3af";
+      ctx.fillText("（タップ / Space で次へ）", x + w - 140, y + h - 10);
     }
 
-    function drawParticles() {
-      for (let p of particles) {
-        p.draw(ctx);
-      }
-    }
-
-    // テキストをいい感じに折り返すヘルパー（日本語対応・ざっくり）
-    function wrapTextLines(ctx, text, maxWidth) {
+    function wrapText(text, maxWidth, context) {
+      const words = text.split("");
+      let line = "";
       const lines = [];
-      let i = 0;
-      while (i < text.length) {
-        let len = 1;
-        while (i + len <= text.length) {
-          const test = text.slice(i, i + len);
-          const w = ctx.measureText(test).width;
-          if (w > maxWidth && len > 1) {
-            len--;
-            break;
-          }
-          if (w > maxWidth && len === 1) break;
-          len++;
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i];
+        const w = context.measureText(testLine).width;
+        if (w > maxWidth && line !== "") {
+          lines.push(line);
+          line = words[i];
+        } else {
+          line = testLine;
         }
-        lines.push(text.slice(i, i + len));
-        i += len;
       }
+      if (line) lines.push(line);
       return lines;
     }
 
-    // 会話吹き出しの描画
-    function drawDialogueOverlay() {
-      if (!dialogueActive || !currentDialogueText) return;
-
-      const margin = 18;
-      const padding = 12;
-      const boxWidth = canvas.width - margin * 2;
-      const boxHeight = 110;
-      const boxX = margin;
-      const boxY = canvas.height - boxHeight - margin;
-
-      ctx.save();
-      ctx.fillStyle = "rgba(15,23,42,0.88)";
-      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-      ctx.strokeStyle = "rgba(148,163,184,0.9)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth - 1, boxHeight - 1);
-
-      ctx.fillStyle = "#e5e7eb";
-      ctx.font = "14px system-ui, sans-serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-
-      const maxTextWidth = boxWidth - padding * 2;
-      const lines = wrapTextLines(ctx, currentDialogueText, maxTextWidth);
-      let y = boxY + padding + 4;
-      for (const line of lines) {
-        ctx.fillText(line, boxX + padding, y);
-        y += 18;
-      }
-
-      ctx.font = "11px system-ui, sans-serif";
-      ctx.fillStyle = "#9ca3af";
-      ctx.fillText("（タップ / Space で次へ）", boxX + padding, boxY + boxHeight - padding - 16);
-
-      ctx.restore();
-    }
-
-    function drawInfoOverlay() {
+    function drawOverlay() {
       if (phase === PHASE_TITLE) {
-        ctx.save();
-        ctx.fillStyle = "rgba(15,23,42,0.78)";
-        ctx.fillRect(60, 260, canvas.width - 120, 120);
-        ctx.fillStyle = "#e5e7eb";
+        ctx.fillStyle = "rgba(15,23,42,0.7)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#f9fafb";
+        ctx.font = "24px system-ui";
         ctx.textAlign = "center";
-        ctx.font = "18px system-ui, sans-serif";
-        ctx.fillText("Spaceキー / ボタン / 画面タップでスタート", canvas.width / 2, 320);
-        ctx.font = "13px system-ui, sans-serif";
-        ctx.fillText("スマホは下のパッド＋ボタン＋タップで操作", canvas.width / 2, 348);
-        ctx.restore();
+        ctx.fillText("ぎんなん幻想弾幕譚", canvas.width / 2, canvas.height / 2 - 40);
+        ctx.font = "14px system-ui";
+        ctx.fillText("Tap / Space / ボタン で開始", canvas.width / 2, canvas.height / 2 + 4);
+      } else if (phase === PHASE_GAMEOVER) {
+        ctx.fillStyle = "rgba(15,23,42,0.7)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#fecaca";
+        ctx.font = "26px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.font = "14px system-ui";
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillText("Tap / Space / ボタン でリトライ", canvas.width / 2, canvas.height / 2 + 16);
+      } else if (phase === PHASE_CLEAR) {
+        ctx.fillStyle = "rgba(15,23,42,0.6)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#bbf7d0";
+        ctx.font = "26px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillText("STAGE CLEAR", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.font = "14px system-ui";
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillText("Tap / Space / ボタン で再挑戦", canvas.width / 2, canvas.height / 2 + 16);
       }
+      ctx.textAlign = "start";
     }
 
     function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawBackground();
-      drawBoss();
-      drawBullets();
-      drawParticles();
+
+      // 弾・プレイヤー・ボス
+      for (const b of bullets) b.draw(ctx);
+      for (const p of particles) p.draw(ctx);
       drawPlayer();
-      drawInfoOverlay();
-      drawDialogueOverlay(); // ← 最後に会話を上から描画
+      drawBoss();
+
+      // 会話ウィンドウ
+      drawDialogueBox();
+
+      // タイトル / リザルトオーバーレイ
+      drawOverlay();
     }
 
-    let lastTime = 0;
-    function loop(timestamp) {
-      if (!lastTime) lastTime = timestamp;
-      let dt = (timestamp - lastTime) / 1000;
-      if (dt > 0.05) dt = 0.05;
-      lastTime = timestamp;
-
-      update(dt);
-      draw();
-      requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
-
-    // キーボード
-    window.addEventListener("keydown", (e) => {
-      keys[e.code] = true;
-
-      if (e.code === "Space") {
-        if (dialogueActive) {
-          e.preventDefault();
-          showNextDialogue();
-          return;
-        }
-        if (phase === PHASE_TITLE || phase === PHASE_CLEAR || phase === PHASE_GAMEOVER) {
-          e.preventDefault();
-          startGame();
-          return;
-        }
-      }
-
-      if (e.code === "KeyX") {
-        if (!dialogueActive && (phase === PHASE_STAGE || phase === PHASE_BOSS)) {
-          e.preventDefault();
-          useBomb();
-        }
-      }
-    });
-
-    window.addEventListener("keyup", (e) => {
-      keys[e.code] = false;
-    });
-
-    startButton.addEventListener("click", () => {
-      if (dialogueActive) return;
-      startGame();
-    });
-
-    // 画面タップで会話送り＆スタート
-    function handleTapForGame(e) {
-      if (e) e.preventDefault();
-
-      if (dialogueActive) {
-        showNextDialogue();
-      } else if (
-        phase === PHASE_TITLE ||
-        phase === PHASE_CLEAR ||
-        phase === PHASE_GAMEOVER
-      ) {
-        startGame();
-      }
-    }
-
-    canvas.addEventListener("click", handleTapForGame);
-    canvas.addEventListener("touchend", (e) => {
-      e.preventDefault();
-      handleTapForGame(e);
-    }, { passive: false });
-
-    // INF / チート
-    if (cheatCheckbox) {
-      cheatCheckbox.addEventListener("change", (e) => {
-        cheatInvincible = e.target.checked;
-        if (cheatInvincible) {
-          logMessage("※チート：敵の攻撃無効化 ON（INF）");
-        } else {
-          logMessage("※チート：敵の攻撃無効化 OFF");
-        }
-      });
-    }
-
-    // === タッチ操作の実装 ===
-    function handleMoveTouch(clientX, clientY) {
-      const rect = touchMoveArea.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      let dx = clientX - cx;
-      let dy = clientY - cy;
-      const maxR = rect.width / 2;
-      const len = Math.hypot(dx, dy);
-
-      if (len > 0) {
-        const n = Math.min(len, maxR);
-        dx = dx / len * n;
-        dy = dy / len * n;
-        touchMoveDx = dx / maxR;
-        touchMoveDy = dy / maxR;
-      } else {
-        touchMoveDx = 0;
-        touchMoveDy = 0;
-      }
-
-      touchMoveStick.style.left = `${50 + touchMoveDx * 40}%`;
-      touchMoveStick.style.top = `${50 + touchMoveDy * 40}%`;
-    }
-
-    function resetMoveTouch() {
-      touchMoveActive = false;
-      touchMoveDx = 0;
-      touchMoveDy = 0;
-      touchMoveStick.style.left = "50%";
-      touchMoveStick.style.top = "50%";
-    }
-
-    if (touchMoveArea) {
-      const start = (e) => {
-        e.preventDefault();
-        touchMoveActive = true;
-        const t = e.touches ? e.touches[0] : e;
-        handleMoveTouch(t.clientX, t.clientY);
-      };
-      const move = (e) => {
-        if (!touchMoveActive) return;
-        e.preventDefault();
-        const t = e.touches ? e.touches[0] : e;
-        handleMoveTouch(t.clientX, t.clientY);
-      };
-      const end = (e) => {
-        e.preventDefault();
-        resetMoveTouch();
-      };
-
-      touchMoveArea.addEventListener("pointerdown", start);
-      touchMoveArea.addEventListener("pointermove", move);
-      touchMoveArea.addEventListener("pointerup", end);
-      touchMoveArea.addEventListener("pointercancel", end);
-      touchMoveArea.addEventListener("pointerleave", (e) => {
-        if (touchMoveActive) end(e);
-      });
-
-      touchMoveArea.addEventListener("touchstart", start, { passive: false });
-      touchMoveArea.addEventListener("touchmove", move, { passive: false });
-      touchMoveArea.addEventListener("touchend", end);
-      touchMoveArea.addEventListener("touchcancel", end);
-    }
-
-    function bindTouchButton(btn, onDown, onUp) {
-      if (!btn) return;
-      const down = (e) => {
-        e.preventDefault();
-        onDown();
-      };
-      const up = (e) => {
-        e.preventDefault();
-        if (onUp) onUp();
-      };
-      btn.addEventListener("pointerdown", down);
-      btn.addEventListener("pointerup", up);
-      btn.addEventListener("pointercancel", up);
-      btn.addEventListener("touchstart", down, { passive: false });
-      btn.addEventListener("touchend", up);
-      btn.addEventListener("touchcancel", up);
-    }
-
-    bindTouchButton(btnShot,
-      () => { touchShot = true; },
-      () => { touchShot = false; }
-    );
-
-    bindTouchButton(btnSlow,
-      () => { touchSlow = true; },
-      () => { touchSlow = false; }
-    );
-
-    bindTouchButton(btnBomb,
-      () => {
-        if (!dialogueActive && (phase === PHASE_STAGE || phase === PHASE_BOSS)) {
-          useBomb();
-        }
-      },
-      null
-    );
-
+    // 初期ログ
     clearLog();
-    logMessage("タイトル：ぎんなん幻想弾幕譚 - Kojima Bullet Hell");
-    logMessage("PCはキーボード、スマホは下のパッド＋ボタン＋画面タップで操作。");
+    logMessage("『ぎんな弾幕譚』へようこそ。");
+    logMessage("Space / 画面タップ / ボタン からスタートできます。");
+
+    requestAnimationFrame(loop);
   </script>
 </body>
 </html>
